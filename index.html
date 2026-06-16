@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Single 10G OLT Swap Risk Dashboard</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js for visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- SheetJS for Excel Export -->
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; font-family: 'Inter', sans-serif; }
+        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .vendor-badge { padding: 4px 12px; border-radius: 9999px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; }
+        .bg-nokia { background-color: #001135; border: 1px solid #3b82f6; }
+        .bg-zte { background-color: #005aa9; border: 1px solid #60a5fa; }
+        .bg-gcom { background-color: #991b1b; border: 1px solid #ef4444; }
+        .bg-dasan { background-color: #1e40af; border: 1px solid #3b82f6; }
+        .bg-raisecom { background-color: #065f46; border: 1px solid #10b981; }
+        .bg-unknown { background-color: #334155; border: 1px solid #94a3b8; }
+        
+        /* Custom scrollbar for dark theme */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1e293b; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+        .stat-card { transition: transform 0.3s ease, box-shadow 0.3s ease; }
+        .stat-card:hover { transform: translateY(-5px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5); }
+    </style>
+</head>
+<body class="p-4 md:p-12">
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <header class="mb-12 text-center relative">
+            <div class="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 bg-blue-600/20 blur-[120px] rounded-full -z-10"></div>
+            <h1 class="text-5xl font-black tracking-tighter mb-3 bg-gradient-to-r from-white via-blue-200 to-slate-400 bg-clip-text text-transparent">
+                Single Uplink 10G
+            </h1>
+            <p class="text-slate-400 font-medium tracking-wide uppercase text-sm">Network Redundancy Analysis & CPE Swap Status</p>
+        </header>
+
+        <!-- Stats Overview -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
+            <div class="glass p-8 rounded-[2rem] stat-card border-l-4 border-red-500">
+                <p class="text-xs font-bold text-slate-500 uppercase tracking-widest">Total Sites</p>
+                <p id="total-sites" class="text-5xl font-black mt-2 text-white">0</p>
+                <div class="flex items-center mt-3 text-red-400 text-[10px] font-bold">
+                    <span class="mr-1">●</span> CRITICAL RISK (NO REDUNDANCY)
+                </div>
+            </div>
+            <div class="glass p-8 rounded-[2rem] stat-card border-l-4 border-blue-500">
+                <p class="text-xs font-bold text-slate-500 uppercase tracking-widest">OLT Vendors</p>
+                <p id="olt-vendor-count" class="text-5xl font-black mt-2 text-white">0</p>
+                <p class="text-slate-500 text-[10px] font-bold mt-3">GCOM, DASAN, RAISECOM</p>
+            </div>
+            <div class="glass p-8 rounded-[2rem] stat-card border-l-4 border-indigo-500">
+                <p class="text-xs font-bold text-slate-500 uppercase tracking-widest">CPE Vendors</p>
+                <p id="cpe-vendor-count" class="text-5xl font-black mt-2 text-white">0</p>
+                <p class="text-slate-500 text-[10px] font-bold mt-3">NOKIA, ZTE (IXR/6120H)</p>
+            </div>
+            <div class="glass p-8 rounded-[2rem] stat-card border-l-4 border-emerald-500">
+                <p class="text-xs font-bold text-slate-500 uppercase tracking-widest">System Health</p>
+                <p class="text-5xl font-black mt-2 text-white">100%</p>
+                <p class="text-emerald-400 text-[10px] font-bold mt-3">DATA PARSING COMPLETE</p>
+            </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
+            <div class="glass p-10 rounded-[2.5rem] shadow-2xl relative overflow-hidden">
+                <div class="absolute top-0 right-0 p-4 opacity-10">
+                    <svg class="w-24 h-24 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M11 2v20c-5.07 0-9-4.33-9-10s3.93-10 9-10zm2 0c5.07 0 9 4.33 9 10s-3.93 10-9 10V2z"/></svg>
+                </div>
+                <h3 class="text-sm font-black text-slate-400 mb-8 uppercase tracking-[0.3em]">OLT Vendor Distribution</h3>
+                <div class="h-[300px] flex justify-center">
+                    <canvas id="oltChart"></canvas>
+                </div>
+            </div>
+            <div class="glass p-10 rounded-[2.5rem] shadow-2xl relative overflow-hidden">
+                <div class="absolute top-0 right-0 p-4 opacity-10">
+                    <svg class="w-24 h-24 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>
+                </div>
+                <h3 class="text-sm font-black text-slate-400 mb-8 uppercase tracking-[0.3em]">New CPE Vendor Share</h3>
+                <div class="h-[300px] flex justify-center">
+                    <canvas id="cpeChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters & Table Section -->
+        <div class="glass p-1 md:p-10 rounded-[3rem] shadow-2xl border border-white/5">
+            <div class="p-6 md:p-0">
+                <div class="flex flex-col md:flex-row justify-between items-end mb-10 gap-8">
+                    <div class="w-full md:w-auto flex flex-col items-start gap-4">
+                        <div>
+                            <h2 class="text-3xl font-black text-white tracking-tighter uppercase italic leading-none">Detailed Inventory</h2>
+                            <p class="text-slate-500 text-xs mt-2 font-bold uppercase tracking-widest">Real-time filtering enabled</p>
+                        </div>
+                        <button id="exportBtn" class="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black uppercase tracking-widest rounded-xl transition-all border border-emerald-400/30 shadow-[0_0_20px_rgba(16,185,129,0.2)] hover:shadow-[0_0_25px_rgba(16,185,129,0.4)] cursor-pointer">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                            Export to Excel
+                        </button>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 w-full md:w-auto">
+                        <div class="min-w-[200px]">
+                            <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-1 tracking-widest">Quick Search</label>
+                            <input type="text" id="searchInput" placeholder="Site ID or Device Name..." 
+                                class="w-full px-5 py-3 bg-slate-800/50 border border-white/10 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-sm font-bold text-white placeholder:text-slate-600">
+                        </div>
+                        <div class="min-w-[180px]">
+                            <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-1 tracking-widest">Filter OLT Vendor</label>
+                            <select id="vendorFilter" 
+                                class="w-full px-5 py-3 bg-slate-800/50 border border-white/10 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer transition-all text-sm font-bold text-white appearance-none">
+                                <option value="">All Vendors</option>
+                            </select>
+                        </div>
+                        <div class="min-w-[180px]">
+                            <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 ml-1 tracking-widest">Filter CPE Vendor</label>
+                            <select id="cpeFilter" 
+                                class="w-full px-5 py-3 bg-slate-800/50 border border-white/10 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer transition-all text-sm font-bold text-white appearance-none">
+                                <option value="">All CPEs</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="overflow-hidden rounded-3xl border border-white/5 bg-slate-900/30">
+                    <table class="min-w-full">
+                        <thead>
+                            <tr class="bg-white/5">
+                                <th class="px-8 py-5 text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Device Name</th>
+                                <th class="px-8 py-5 text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">OLT Vendor</th>
+                                <th class="px-8 py-5 text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">CPE Site</th>
+                                <th class="px-8 py-5 text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">New Device Model</th>
+                                <th class="px-8 py-5 text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">CPE Vendor</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dataTable" class="divide-y divide-white/5">
+                            <!-- JS will inject rows -->
+                        </tbody>
+                    </table>
+                </div>
+                <div id="no-data" class="hidden p-20 text-center text-slate-500 font-bold uppercase tracking-widest text-sm">
+                    No results found for current filters
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Data embedded directly to bypass local file access security (CORS)
+        const allData = [{"Device Name": "RYG01009G00", "Vendor": "Dasan", "last_speed": "10 Gbps", "New Device": "7250 IXR", "New CPE Vendor": "Nokia", "Matched CPE Site": "RYG1861"}, {"Device Name": "RYG01048G00", "Vendor": "Dasan", "last_speed": "10 Gbps", "New Device": "7250 IXR", "New CPE Vendor": "Nokia", "Matched CPE Site": "RYG8554"}, {"Device Name": "RYG08011G00", "Vendor": "Dasan", "last_speed": "10 Gbps", "New Device": "7250 IXR", "New CPE Vendor": "Nokia", "Matched CPE Site": "RYG7131"}, {"Device Name": "CBR06010G00", "Vendor": "Dasan", "last_speed": "10 Gbps", "New Device": "SAS-Mxp 22F2C 4SFP+ ETR 7210", "New CPE Vendor": "Nokia", "Matched CPE Site": "CBR7111"}, {"Device Name": "BRR08005G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "BRR1928"}, {"Device Name": "NKN01022G00", "Vendor": "Dasan", "last_speed": "10 Gbps", "New Device": "7250 IXR", "New CPE Vendor": "Nokia", "Matched CPE Site": "NKN6706"}, {"Device Name": "CBR01035G00", "Vendor": "Dasan", "last_speed": "10 Gbps", "New Device": "7250 IXR", "New CPE Vendor": "Nokia", "Matched CPE Site": "CBR6759"}, {"Device Name": "KKN09006G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "KKN8669"}, {"Device Name": "CBR07035G00", "Vendor": "Dasan", "last_speed": "10 Gbps", "New Device": "7250 IXR", "New CPE Vendor": "Nokia", "Matched CPE Site": "CBR6797"}, {"Device Name": "MHR06011G00", "Vendor": "Raisecom", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "MHR8541"}, {"Device Name": "NBL05008G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "SAS-Mxp 22F2C 4SFP+ ETR 7210", "New CPE Vendor": "Nokia", "Matched CPE Site": "NBL7130"}, {"Device Name": "RYG03016G00", "Vendor": "Dasan", "last_speed": "10 Gbps", "New Device": "SAS-Mxp 22F2C 4SFP+ ETR 7210", "New CPE Vendor": "Nokia", "Matched CPE Site": "RYG8541"}, {"Device Name": "LOI03018G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "SAS-Mxp 22F2C 4SFP+ ETR 7210", "New CPE Vendor": "Nokia", "Matched CPE Site": "LOI7217"}, {"Device Name": "SRN09003G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "SRN1932"}, {"Device Name": "SRN03008G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "SRN1913"}, {"Device Name": "NKR14008G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "NKR1616"}, {"Device Name": "RET02014G00", "Vendor": "Raisecom", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "RET1914"}, {"Device Name": "BRR01025G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "BRR6751"}, {"Device Name": "CBR02008G00", "Vendor": "Dasan", "last_speed": "10 Gbps", "New Device": "SAS-Mxp 22F2C 4SFP+ ETR 7210", "New CPE Vendor": "Nokia", "Matched CPE Site": "CBR6055"}, {"Device Name": "SKN08002G00", "Vendor": "Raisecom", "last_speed": "10 Gbps", "New Device": "SAS-Mxp 22F2C 4SFP+ ETR 7210", "New CPE Vendor": "Nokia", "Matched CPE Site": "SKN7125"}, {"Device Name": "BRR19004G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "BRR1619"}, {"Device Name": "RET10016G00", "Vendor": "Raisecom", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "RET1626"}, {"Device Name": "NKR02005G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "NKR6732"}, {"Device Name": "SKN06007G00", "Vendor": "Raisecom", "last_speed": "10 Gbps", "New Device": "SAS-Mxp 22F2C 4SFP+ ETR 7210", "New CPE Vendor": "Nokia", "Matched CPE Site": "SKN7164"}, {"Device Name": "NKI16008G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "SAS-Mxp 22F2C 4SFP+ ETR 7210", "New CPE Vendor": "Nokia", "Matched CPE Site": "NKI7145"}, {"Device Name": "RET11017G00", "Vendor": "Raisecom", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "RET7142"}, {"Device Name": "KKN19004G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "KKN2032"}, {"Device Name": "MHR13004G00", "Vendor": "Raisecom", "last_speed": "10 Gbps", "New Device": null, "New CPE Vendor": "Unknown", "Matched CPE Site": "MHR8527"}, {"Device Name": "NKI16007G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "SAS-Mxp 22F2C 4SFP+ ETR 7210", "New CPE Vendor": "Nokia", "Matched CPE Site": "NKI7146"}, {"Device Name": "KKN10004G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "KKN8659"}, {"Device Name": "PCR07003G00", "Vendor": "Dasan", "last_speed": "10 Gbps", "New Device": "7250 IXR", "New CPE Vendor": "Nokia", "Matched CPE Site": "PCR1863"}, {"Device Name": "SSK04009G00", "Vendor": "Raisecom", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "SSK1913"}, {"Device Name": "NKR30002G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "NKR6750"}, {"Device Name": "SRN08004G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "SRN1618"}, {"Device Name": "CBR04067G00", "Vendor": "Dasan", "last_speed": "10 Gbps", "New Device": "7250 IXR", "New CPE Vendor": "Nokia", "Matched CPE Site": "CBR7622"}, {"Device Name": "BRR15001G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "BRR1627"}, {"Device Name": "KKN02012G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "KKN7158"}, {"Device Name": "RET02012G00", "Vendor": "Raisecom", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "RET1953"}, {"Device Name": "RET15002G00", "Vendor": "Raisecom", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "RET1614"}, {"Device Name": "BKN06009G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "SAS-Mxp 22F2C 4SFP+ ETR 7210", "New CPE Vendor": "Nokia", "Matched CPE Site": "BKN7164"}, {"Device Name": "SRN05017G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "SRN6757"}, {"Device Name": "RYG01017G00", "Vendor": "Dasan", "last_speed": "10 Gbps", "New Device": "7250 IXR", "New CPE Vendor": "Nokia", "Matched CPE Site": "RYG0032"}, {"Device Name": "KKN15007G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "SAS-Mxp 22F2C 4SFP+ ETR 7210", "New CPE Vendor": "Nokia", "Matched CPE Site": "KKN7234"}, {"Device Name": "CYP10009G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "CYP8524"}, {"Device Name": "KLS13006G00", "Vendor": "Raisecom", "last_speed": "10 Gbps", "New Device": "SAS-Mxp 22F2C 4SFP+ ETR 7210", "New CPE Vendor": "Nokia", "Matched CPE Site": "KLS8512"}, {"Device Name": "CBR06008G00", "Vendor": "Dasan", "last_speed": "10 Gbps", "New Device": "SAS-Mxp 22F2C 4SFP+ ETR 7210", "New CPE Vendor": "Nokia", "Matched CPE Site": "CBR6067"}, {"Device Name": "KKN10002G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "KKN8584"}, {"Device Name": "CCS09006G00", "Vendor": "Dasan", "last_speed": "10 Gbps", "New Device": "SAS-Mxp 22F2C 4SFP+ ETR 7210", "New CPE Vendor": "Nokia", "Matched CPE Site": "CCS8588"}, {"Device Name": "NKP10005G00", "Vendor": "Raisecom", "last_speed": "10 Gbps", "New Device": "SAS-Mxp 22F2C 4SFP+ ETR 7210", "New CPE Vendor": "Nokia", "Matched CPE Site": "NKP7156"}, {"Device Name": "KKN05017G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "KKN7237"}, {"Device Name": "RYG03004G00", "Vendor": "Dasan", "last_speed": "10 Gbps", "New Device": "7250 IXR", "New CPE Vendor": "Nokia", "Matched CPE Site": "RYG6021"}, {"Device Name": "CBR04029G00", "Vendor": "Dasan", "last_speed": "10 Gbps", "New Device": "7250 IXR", "New CPE Vendor": "Nokia", "Matched CPE Site": "CBR8674"}, {"Device Name": "CCS06011G00", "Vendor": "Dasan", "last_speed": "10 Gbps", "New Device": "SAS-Mxp 22F2C 4SFP+ ETR 7210", "New CPE Vendor": "Nokia", "Matched CPE Site": "CCS1638"}, {"Device Name": "MHR01024G00", "Vendor": "Raisecom", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "MHR7152"}, {"Device Name": "NKR10008G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "NKR1801"}, {"Device Name": "CBR04033G00", "Vendor": "Dasan", "last_speed": "10 Gbps", "New Device": "7250 IXR", "New CPE Vendor": "Nokia", "Matched CPE Site": "CBR6718"}, {"Device Name": "SSK03013G00", "Vendor": "Raisecom", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "SSK7180"}, {"Device Name": "SKN10012G00", "Vendor": "Raisecom", "last_speed": "10 Gbps", "New Device": "SAS-Mxp 22F2C 4SFP+ ETR 7210", "New CPE Vendor": "Nokia", "Matched CPE Site": "SKN7131"}, {"Device Name": "CCS10005G00", "Vendor": "Dasan", "last_speed": "10 Gbps", "New Device": "SAS-Mxp 22F2C 4SFP+ ETR 7210", "New CPE Vendor": "Nokia", "Matched CPE Site": "CCS6019"}, {"Device Name": "KKN02007G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "KKN7256"}, {"Device Name": "KKN08003G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "KKN8624"}, {"Device Name": "SRN03003G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "SRN1614"}, {"Device Name": "CCS06005G00", "Vendor": "Dasan", "last_speed": "10 Gbps", "New Device": "SAS-Mxp 22F2C 4SFP+ ETR 7210", "New CPE Vendor": "Nokia", "Matched CPE Site": "CCS1822"}, {"Device Name": "CYP06003G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "SAS-Mxp 22F2C 4SFP+ ETR 7210", "New CPE Vendor": "Nokia", "Matched CPE Site": "CYP1909"}, {"Device Name": "RYG01041G00", "Vendor": "Dasan", "last_speed": "10 Gbps", "New Device": "7250 IXR", "New CPE Vendor": "Nokia", "Matched CPE Site": "RYG8513"}, {"Device Name": "CBR07047G00", "Vendor": "Dasan", "last_speed": "10 Gbps", "New Device": "7250 IXR", "New CPE Vendor": "Nokia", "Matched CPE Site": "CBR6021"}, {"Device Name": "CYP13003G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "SAS-Mxp 22F2C 4SFP+ ETR 7210", "New CPE Vendor": "Nokia", "Matched CPE Site": "CYP6742"}, {"Device Name": "KKN02010G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "KKN7255"}, {"Device Name": "NBL04012G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "SAS-Mxp 22F2C 4SFP+ ETR 7210", "New CPE Vendor": "Nokia", "Matched CPE Site": "NBL7129"}, {"Device Name": "KKN10008G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "KKN8634"}, {"Device Name": "CYP06002G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "CYP6746"}, {"Device Name": "CCS06025G00", "Vendor": "Dasan", "last_speed": "10 Gbps", "New Device": "7250 IXR", "New CPE Vendor": "Nokia", "Matched CPE Site": "CCS8563"}, {"Device Name": "CCS04018G00", "Vendor": "Dasan", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "CCS6001"}, {"Device Name": "CBR02010G00", "Vendor": "Dasan", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "CBR1863"}, {"Device Name": "CYP02004G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "CYP8522"}, {"Device Name": "NBL04011G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "SAS-Mxp 22F2C 4SFP+ ETR 7210", "New CPE Vendor": "Nokia", "Matched CPE Site": "NBL7131"}, {"Device Name": "SSK01013G00", "Vendor": "Raisecom", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "SSK1615"}, {"Device Name": "CBR07053G00", "Vendor": "Dasan", "last_speed": "10 Gbps", "New Device": "7250 IXR", "New CPE Vendor": "Nokia", "Matched CPE Site": "CBR0116"}, {"Device Name": "CBR09026G00", "Vendor": "Dasan", "last_speed": "10 Gbps", "New Device": "SAS-Mxp 22F2C 4SFP+ ETR 7210", "New CPE Vendor": "Nokia", "Matched CPE Site": "CBR0028"}, {"Device Name": "UDT24003G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "UDT7247"}, {"Device Name": "CBR02025G00", "Vendor": "Dasan", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "CBR8771"}, {"Device Name": "CYP01020G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "SAS-Mxp 22F2C 4SFP+ ETR 7210", "New CPE Vendor": "Nokia", "Matched CPE Site": "CYP6702"}, {"Device Name": "NKP01017G00", "Vendor": "Raisecom", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "NKP7153"}, {"Device Name": "NKR23001G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "NKR1608"}, {"Device Name": "RET03003G00", "Vendor": "Raisecom", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "RET1612"}, {"Device Name": "BRR01034G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "BRR6734"}, {"Device Name": "KKN23002G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "KKN1110"}, {"Device Name": "CBR04034G00", "Vendor": "Dasan", "last_speed": "10 Gbps", "New Device": "7250 IXR", "New CPE Vendor": "Nokia", "Matched CPE Site": "CBR8734"}, {"Device Name": "SRN09005G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "SRN6755"}, {"Device Name": "PCR08006G00", "Vendor": "Dasan", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "PCR4004"}, {"Device Name": "KKN16012G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "KKN7259"}, {"Device Name": "NKP06004G00", "Vendor": "Raisecom", "last_speed": "10 Gbps", "New Device": "SAS-Mxp 22F2C 4SFP+ ETR 7210", "New CPE Vendor": "Nokia", "Matched CPE Site": "NKP7152"}, {"Device Name": "BRR01027G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "BRR7129"}, {"Device Name": "RYG02018G00", "Vendor": "Dasan", "last_speed": "10 Gbps", "New Device": "SAS-Mxp 22F2C 4SFP+ ETR 7210", "New CPE Vendor": "Nokia", "Matched CPE Site": "RYG5552"}, {"Device Name": "CBR04047G00", "Vendor": "Dasan", "last_speed": "10 Gbps", "New Device": "7250 IXR", "New CPE Vendor": "Nokia", "Matched CPE Site": "CBR8579"}, {"Device Name": "RET11009G00", "Vendor": "Raisecom", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "RET6775"}, {"Device Name": "LOI03016G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "SAS-Mxp 22F2C 4SFP+ ETR 7210", "New CPE Vendor": "Nokia", "Matched CPE Site": "LOI7230"}, {"Device Name": "BRR05004G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "BRR6702"}, {"Device Name": "CBR04040G00", "Vendor": "Dasan", "last_speed": "10 Gbps", "New Device": "7250 IXR", "New CPE Vendor": "Nokia", "Matched CPE Site": "CBR6726"}, {"Device Name": "CBR09028G00", "Vendor": "Dasan", "last_speed": "10 Gbps", "New Device": "SAS-Mxp 22F2C 4SFP+ ETR 7210", "New CPE Vendor": "Nokia", "Matched CPE Site": "CBR6740"}, {"Device Name": "NKR22005G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "NKR1602"}, {"Device Name": "CYP13001G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "SAS-Mxp 22F2C 4SFP+ ETR 7210", "New CPE Vendor": "Nokia", "Matched CPE Site": "CYP1912"}, {"Device Name": "CBR04028G00", "Vendor": "Dasan", "last_speed": "10 Gbps", "New Device": "SAS-Mxp 22F2C 4SFP+ ETR 7210", "New CPE Vendor": "Nokia", "Matched CPE Site": "CBR6065"}, {"Device Name": "CBR04042G00", "Vendor": "Dasan", "last_speed": "10 Gbps", "New Device": "7250 IXR", "New CPE Vendor": "Nokia", "Matched CPE Site": "CBR8570"}, {"Device Name": "SRN17001G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "SRN8527"}, {"Device Name": "MHR07011G00", "Vendor": "Raisecom", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "MHR6759"}, {"Device Name": "CBR07033G00", "Vendor": "Dasan", "last_speed": "10 Gbps", "New Device": "7250 IXR", "New CPE Vendor": "Nokia", "Matched CPE Site": "CBR6753"}, {"Device Name": "RYG01031G00", "Vendor": "Dasan", "last_speed": "10 Gbps", "New Device": "7250 IXR", "New CPE Vendor": "Nokia", "Matched CPE Site": "RYG8520"}, {"Device Name": "CBR07023G00", "Vendor": "Dasan", "last_speed": "10 Gbps", "New Device": "7250 IXR", "New CPE Vendor": "Nokia", "Matched CPE Site": "CBR8789"}, {"Device Name": "NKP01012G00", "Vendor": "Raisecom", "last_speed": "10 Gbps", "New Device": "SAS-Mxp 22F2C 4SFP+ ETR 7210", "New CPE Vendor": "Nokia", "Matched CPE Site": "NKP1611"}, {"Device Name": "NKR08009G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "NKR1930"}, {"Device Name": "RET09003G00", "Vendor": "Raisecom", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "RET7126"}, {"Device Name": "NKR14014G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "NKR6758"}, {"Device Name": "CBR02027G00", "Vendor": "Dasan", "last_speed": "10 Gbps", "New Device": "7250 IXR", "New CPE Vendor": "Nokia", "Matched CPE Site": "CBR6741"}, {"Device Name": "NBL01007G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "7250 IXR", "New CPE Vendor": "Nokia", "Matched CPE Site": "NBL8505"}, {"Device Name": "KKN05011G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "KKN8614"}, {"Device Name": "CCS08002G00", "Vendor": "Dasan", "last_speed": "10 Gbps", "New Device": "SAS-Mxp 22F2C 4SFP+ ETR 7210", "New CPE Vendor": "Nokia", "Matched CPE Site": "CCS6748"}, {"Device Name": "NKR04009G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "NKR8670"}, {"Device Name": "NKR18015G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "NKR1916"}, {"Device Name": "MHR03014G00", "Vendor": "Raisecom", "last_speed": "10 Gbps", "New Device": "SAS-Mxp 22F2C 4SFP+ ETR 7210", "New CPE Vendor": "Nokia", "Matched CPE Site": "MHR1916"}, {"Device Name": "BKN06006G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "SAS-Mxp 22F2C 4SFP+ ETR 7210", "New CPE Vendor": "Nokia", "Matched CPE Site": "BKN7143"}, {"Device Name": "BRR23001G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "BRR1604"}, {"Device Name": "MHR04006G00", "Vendor": "Raisecom", "last_speed": "10 Gbps", "New Device": "SAS-Mxp 22F2C 4SFP+ ETR 7210", "New CPE Vendor": "Nokia", "Matched CPE Site": "MHR1901"}, {"Device Name": "NKR15005G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "NKR2043"}, {"Device Name": "NKR17003G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "NKR1990"}, {"Device Name": "CYP01032G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "SAS-Mxp 22F2C 4SFP+ ETR 7210", "New CPE Vendor": "Nokia", "Matched CPE Site": "CYP6726"}, {"Device Name": "RET05013G00", "Vendor": "Raisecom", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "RET8551"}, {"Device Name": "NKR05001G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "NKR1624"}, {"Device Name": "RYG01016G00", "Vendor": "Dasan", "last_speed": "10 Gbps", "New Device": "7250 IXR", "New CPE Vendor": "Nokia", "Matched CPE Site": "RYG8578"}, {"Device Name": "CBR04054G00", "Vendor": "Dasan", "last_speed": "10 Gbps", "New Device": "7250 IXR", "New CPE Vendor": "Nokia", "Matched CPE Site": "CBR6808"}, {"Device Name": "SRN14001G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "SRN1619"}, {"Device Name": "BRR08004G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "BRR1903"}, {"Device Name": "CBR04058G00", "Vendor": "Dasan", "last_speed": "10 Gbps", "New Device": "7250 IXR", "New CPE Vendor": "Nokia", "Matched CPE Site": "CBR6040"}, {"Device Name": "BRR07006G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "BRR1900"}, {"Device Name": "CCS09011G00", "Vendor": "Dasan", "last_speed": "10 Gbps", "New Device": "7250 IXR", "New CPE Vendor": "Nokia", "Matched CPE Site": "CCS6707"}, {"Device Name": "CBR02015G00", "Vendor": "Dasan", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "CBR8719"}, {"Device Name": "PCR02021G00", "Vendor": "Dasan", "last_speed": "10 Gbps", "New Device": "7250 IXR", "New CPE Vendor": "Nokia", "Matched CPE Site": "PCR1642"}, {"Device Name": "LOI01020G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "SAS-Mxp 22F2C 4SFP+ ETR 7210", "New CPE Vendor": "Nokia", "Matched CPE Site": "LOI7127"}, {"Device Name": "NKR08014G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "NKR6842"}, {"Device Name": "KKN01056G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "KKN8566"}, {"Device Name": "PCR02023G00", "Vendor": "Dasan", "last_speed": "10 Gbps", "New Device": "7250 IXR", "New CPE Vendor": "Nokia", "Matched CPE Site": "PCR8532"}, {"Device Name": "BRR12002G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "BRR1635"}, {"Device Name": "KKN16006G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "KKN6749"}, {"Device Name": "CCS03002G00", "Vendor": "Dasan", "last_speed": "10 Gbps", "New Device": "7250 IXR", "New CPE Vendor": "Nokia", "Matched CPE Site": "CCS8587"}, {"Device Name": "CYP01033G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "SAS-Mxp 22F2C 4SFP+ ETR 7210", "New CPE Vendor": "Nokia", "Matched CPE Site": "CYP8506"}, {"Device Name": "KKN21001G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "KKN2313"}, {"Device Name": "MHR05010G00", "Vendor": "Raisecom", "last_speed": "10 Gbps", "New Device": "SAS-Mxp 22F2C 4SFP+ ETR 7210", "New CPE Vendor": "Nokia", "Matched CPE Site": "MHR3102"}, {"Device Name": "KKN05021G00", "Vendor": "GCOM", "last_speed": "10 Gbps", "New Device": "ZXCTN 6120H-SC", "New CPE Vendor": "ZTE", "Matched CPE Site": "KKN7258"}];
+
+        let oltChart, cpeChart;
+
+        function init() {
+            populateFilters();
+            updateUI();
+
+            ['searchInput', 'vendorFilter', 'cpeFilter'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.addEventListener('input', updateUI);
+                    el.addEventListener('change', updateUI);
+                }
+            });
+
+            const exportBtn = document.getElementById('exportBtn');
+            if (exportBtn) {
+                exportBtn.addEventListener('click', exportToExcel);
+            }
+        }
+
+        function exportToExcel() {
+            // Get current filter states
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const vendor = document.getElementById('vendorFilter').value;
+            const cpe = document.getElementById('cpeFilter').value;
+
+            // Filter data to match what's on screen
+            const filtered = allData.filter(d => {
+                const name = d['Device Name'] ? d['Device Name'].toLowerCase() : '';
+                const site = d['Matched CPE Site'] ? d['Matched CPE Site'].toLowerCase() : '';
+                const matchesSearch = name.includes(search) || site.includes(search);
+                const matchesVendor = !vendor || d.Vendor === vendor;
+                const matchesCPE = !cpe || d['New CPE Vendor'] === cpe;
+                return matchesSearch && matchesVendor && matchesCPE;
+            });
+
+            if (filtered.length === 0) {
+                alert("No data to export. Please adjust your filters.");
+                return;
+            }
+
+            try {
+                // Create workbook and worksheet
+                const ws = XLSX.utils.json_to_sheet(filtered);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Single 10G Raw Data");
+
+                // Generate filename with date
+                const dateStr = new Date().toISOString().split('T')[0];
+                XLSX.writeFile(wb, `Single_10G_Uplink_Report_${dateStr}.xlsx`);
+            } catch (error) {
+                console.error("Export Error:", error);
+                alert("Error exporting to Excel: " + error.message);
+            }
+        }
+
+        function populateFilters() {
+            const vendors = [...new Set(allData.map(d => d.Vendor))].filter(Boolean).sort();
+            const cpes = [...new Set(allData.map(d => d['New CPE Vendor']))].filter(Boolean).sort();
+
+            const vSelect = document.getElementById('vendorFilter');
+            vendors.forEach(v => {
+                const opt = document.createElement('option');
+                opt.value = v; opt.textContent = v;
+                vSelect.appendChild(opt);
+            });
+
+            const cSelect = document.getElementById('cpeFilter');
+            cpes.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c; opt.textContent = c;
+                cSelect.appendChild(opt);
+            });
+        }
+
+        function updateUI() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const vendor = document.getElementById('vendorFilter').value;
+            const cpe = document.getElementById('cpeFilter').value;
+
+            const filtered = allData.filter(d => {
+                const name = d['Device Name'] ? d['Device Name'].toLowerCase() : '';
+                const site = d['Matched CPE Site'] ? d['Matched CPE Site'].toLowerCase() : '';
+                const matchesSearch = name.includes(search) || site.includes(search);
+                const matchesVendor = !vendor || d.Vendor === vendor;
+                const matchesCPE = !cpe || d['New CPE Vendor'] === cpe;
+                return matchesSearch && matchesVendor && matchesCPE;
+            });
+
+            renderTable(filtered);
+            renderCharts(filtered);
+            
+            // Stats
+            document.getElementById('total-sites').textContent = filtered.length;
+            document.getElementById('olt-vendor-count').textContent = [...new Set(filtered.map(d => d.Vendor))].filter(Boolean).length;
+            document.getElementById('cpe-vendor-count').textContent = [...new Set(filtered.map(d => d['New CPE Vendor']))].filter(Boolean).length;
+        }
+
+        function renderTable(data) {
+            const tbody = document.getElementById('dataTable');
+            const noData = document.getElementById('no-data');
+            tbody.innerHTML = '';
+
+            if (data.length === 0) {
+                noData.classList.remove('hidden');
+                return;
+            }
+            noData.classList.add('hidden');
+
+            data.forEach(d => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-white/5 transition-colors duration-150';
+                
+                const vendor = d.Vendor ? d.Vendor.toLowerCase() : 'unknown';
+                const cpeVendor = d['New CPE Vendor'] ? d['New CPE Vendor'].toLowerCase() : 'unknown';
+                
+                const oltClass = `bg-${vendor}`;
+                const cpeClass = `bg-${cpeVendor}`;
+
+                row.innerHTML = `
+                    <td class="px-8 py-4 whitespace-nowrap text-sm font-black text-slate-200">${d['Device Name'] || 'N/A'}</td>
+                    <td class="px-8 py-4 whitespace-nowrap"><span class="vendor-badge ${oltClass}">${d.Vendor || 'Unknown'}</span></td>
+                    <td class="px-8 py-4 whitespace-nowrap text-sm text-blue-400 font-black">${d['Matched CPE Site'] || '-'}</td>
+                    <td class="px-8 py-4 whitespace-nowrap text-xs text-slate-400 font-bold uppercase tracking-tight">${d['New Device'] || 'N/A'}</td>
+                    <td class="px-8 py-4 whitespace-nowrap"><span class="vendor-badge ${cpeClass}">${d['New CPE Vendor'] || 'Unknown'}</span></td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function renderCharts(data) {
+            if (oltChart) oltChart.destroy();
+            if (cpeChart) cpeChart.destroy();
+
+            const oltCounts = data.reduce((acc, d) => { if(d.Vendor) acc[d.Vendor] = (acc[d.Vendor] || 0) + 1; return acc; }, {});
+            const cpeCounts = data.reduce((acc, d) => { if(d['New CPE Vendor']) acc[d['New CPE Vendor']] = (acc[d['New CPE Vendor']] || 0) + 1; return acc; }, {});
+
+            const chartOptions = {
+                maintainAspectRatio: false,
+                cutout: '70%',
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { color: '#94a3b8', font: { size: 10, weight: 'bold' }, usePointStyle: true, padding: 20 }
+                    }
+                },
+                animation: { duration: 800, easing: 'easeOutQuart' }
+            };
+
+            const oltCtx = document.getElementById('oltChart');
+            if (oltCtx) {
+                oltChart = new Chart(oltCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: Object.keys(oltCounts),
+                        datasets: [{
+                            data: Object.values(oltCounts),
+                            backgroundColor: ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6'],
+                            borderWidth: 0,
+                            hoverOffset: 20
+                        }]
+                    },
+                    options: chartOptions
+                });
+            }
+
+            const cpeCtx = document.getElementById('cpeChart');
+            if (cpeCtx) {
+                cpeChart = new Chart(cpeCtx, {
+                    type: 'pie',
+                    data: {
+                        labels: Object.keys(cpeCounts),
+                        datasets: [{
+                            data: Object.values(cpeCounts),
+                            backgroundColor: ['#1e3a8a', '#0369a1', '#475569'],
+                            borderWidth: 2,
+                            borderColor: '#1e293b'
+                        }]
+                    },
+                    options: { ...chartOptions, cutout: '0%' }
+                });
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
