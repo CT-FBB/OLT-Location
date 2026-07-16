@@ -1,7 +1,6 @@
-# Single Uplink 10G Swap Risk Dashboard
+# OLT Location checking
 
-Interactive dashboard to visualize and manage OLT Single 10G Uplink risk data.
-
+Interactive dashboard to visualize and manage OLT location data
 ## Features
 - Interactive Charts (Chart.js)
 - Real-time Data Filtering
