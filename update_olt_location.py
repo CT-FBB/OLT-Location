@@ -9,6 +9,27 @@ LOCATION_DIR = '/Users/bbae/OLT-Location'
 JSON_PATH = os.path.join(LOCATION_DIR, 'olt_location_data.json')
 HTML_PATH = os.path.join(LOCATION_DIR, 'index.html')
 
+def is_power_card(board_type, slot, role):
+    bt = str(board_type).upper()
+    s = str(slot).upper()
+    r = str(role).upper()
+    
+    # Common Huawei power cards: MPWC, MPWD, PRTE, PRTG
+    # ZTE power cards: PRWG, PRWH, PRSF
+    # Dasan/other power modules: PWRD, PDC300S12
+    power_indicators = [
+        'PWR', 'MPWC', 'MPWD', 'PRTE', 'PRTG', 'PRWG', 'PRWH', 'PRSF', 
+        'PDC300S12', 'POWER', 'PDC', 'PDC300'
+    ]
+    if any(ind in bt for ind in power_indicators):
+        return True
+        
+    # Check if slot or role contains power
+    if 'PWR' in s or 'POWER' in s or 'PWR' in r or 'POWER' in r:
+        return True
+        
+    return False
+
 def main():
     # 1. Load historical EDFA models from existing JSON
     historical_edfa = {}
@@ -52,7 +73,10 @@ def main():
     corp_files = sorted(glob.glob(os.path.join(BASE_DIR, 'data', 'onu', 'QRun_Corporate_*.xlsx')), key=os.path.getmtime, reverse=True)
     corp_file = corp_files[0] if corp_files else None
 
-    if not loc_file or not device_file or not board_file or not speed_file or not corp_file:
+    # Define TRUE OLT update path
+    true_file = os.path.join(BASE_DIR, 'scrip', 'TRUE OLT update.xlsx')
+
+    if not loc_file or not device_file or not board_file or not speed_file or not corp_file or not os.path.exists(true_file):
         print("Error: Missing required files.")
         return
 
@@ -61,6 +85,7 @@ def main():
     print(f"Using board file:    {board_file}")
     print(f"Using speed file:    {speed_file}")
     print(f"Using corp file:     {corp_file}")
+    print(f"Using true file:     {true_file}")
 
     # 3. Load Device Master to map OLT name -> Model & OLT Type
     print("Loading Device master...")
@@ -84,6 +109,21 @@ def main():
         std_name = str(name).strip().upper().replace('GO0', 'G00')
         corp_map[std_name] = corp_map.get(std_name, 0) + int(cnt)
 
+    # 3.4. Load EDFA Model & Vendor from TRUE OLT update
+    print("Loading EDFA Model and Vendor from TRUE OLT update...")
+    edfa_model_map = {}
+    edfa_vendor_map = {}
+    df_true = pd.read_excel(true_file, header=1)
+    for _, row in df_true.iterrows():
+        name = str(row.get('OLT Name', '')).strip().upper().replace('GO0', 'G00')
+        v_edfa = str(row.get('EDFA Vendor', '')).strip()
+        m_edfa = str(row.get('EDFA Model', '')).strip()
+        if name:
+            if v_edfa and v_edfa.lower() != 'nan':
+                edfa_vendor_map[name] = v_edfa
+            if m_edfa and m_edfa.lower() != 'nan':
+                edfa_model_map[name] = m_edfa
+
     # 3.5. Load OLT Uplink Speed, ONU Count and PON Port configuration
     print("Loading OLT Uplink speed and ports...")
     df_speed = pd.read_excel(speed_file)
@@ -91,12 +131,14 @@ def main():
     onu_count_map = {}
     ports_use_map = {}
     ports_total_map = {}
+    slots_map = {}
     for _, row in df_speed.iterrows():
         dev_name = str(row.get('Device', '')).strip().upper().replace('GO0', 'G00')
         speed_descr = str(row.get('MaxSpeedDescr', '')).strip()
         onu_cnt = int(row.get('ONU Count', 0)) if not pd.isna(row.get('ONU Count')) else 0
         p_used = int(row.get('PON Port Used', 0)) if not pd.isna(row.get('PON Port Used')) else 0
         p_total = int(row.get('PON Port Count', 0)) if not pd.isna(row.get('PON Port Count')) else 0
+        slot_cnt = int(row.get('PON Slot Count', 0)) if not pd.isna(row.get('PON Slot Count')) else 0
         if not dev_name:
             continue
         # Normalize speed
@@ -111,6 +153,7 @@ def main():
         onu_count_map[dev_name] = onu_cnt
         ports_use_map[dev_name] = p_used
         ports_total_map[dev_name] = p_total
+        slots_map[dev_name] = slot_cnt
 
     # 4. Load Board status file and build boards lists
     print("Loading Board status...")
@@ -131,6 +174,10 @@ def main():
             b_type = ""
         if pd.isna(row.get('OperStatus')) or status.lower() == 'nan':
             status = ""
+            
+        # Exclude power cards
+        if is_power_card(b_type, slot, role):
+            continue
             
         card = {
             "slot": slot,
@@ -194,7 +241,8 @@ def main():
             
         ports_avail = max(0, ports - ports_use)
         
-        cards_total = int(row.get('CARD_OLT_TOTAL', 0)) if not pd.isna(row.get('CARD_OLT_TOTAL')) else 0
+        # Get board total from OLT-Uplink-MaxSpeed (PON Slot Count)
+        cards_total = slots_map.get(clli_std, slots_map.get(clli, 0))
         edfa_cards = int(row.get('CARD_EDFA_TOTAL', 0)) if not pd.isna(row.get('CARD_EDFA_TOTAL')) else 0
         
         lat = float(row.get('LATITUDE', 0.0)) if not pd.isna(row.get('LATITUDE')) else 0.0
@@ -205,7 +253,15 @@ def main():
         dist = str(row.get('DISTRICT', '')).strip()
         subdist = str(row.get('SUBDISTRICT', '')).strip()
         
+        # Resolve EDFA from TRUE OLT update first, fallback to historical JSON
+        edfa_model_val = edfa_model_map.get(clli_std, edfa_model_map.get(clli, ""))
+        edfa_vendor_val = edfa_vendor_map.get(clli_std, edfa_vendor_map.get(clli, ""))
+        
         hist = historical_edfa.get(clli_std, historical_edfa.get(clli, {'edfa_model': '', 'edfa_vendor': ''}))
+        if not edfa_model_val:
+            edfa_model_val = hist.get('edfa_model', '')
+        if not edfa_vendor_val:
+            edfa_vendor_val = hist.get('edfa_vendor', '')
         
         new_data[clli_std] = {
             "reg": reg,
@@ -223,8 +279,8 @@ def main():
             "ports_use": ports_use,
             "ports_avail": ports_avail,
             "boards": boards_map.get(clli_std, boards_map.get(clli, [])),
-            "edfa_model": hist['edfa_model'],
-            "edfa_vendor": hist['edfa_vendor'],
+            "edfa_model": edfa_model_val,
+            "edfa_vendor": edfa_vendor_val,
             "uplink_duplex": speed_map.get(clli_std, speed_map.get(clli, "-")),
             "onu_count": onu_count_map.get(clli_std, onu_count_map.get(clli, 0)),
             "corp_links": corp_map.get(clli_std, corp_map.get(clli, 0))
