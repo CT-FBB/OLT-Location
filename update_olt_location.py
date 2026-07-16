@@ -39,20 +39,28 @@ def main():
             files = sorted(glob.glob(os.path.join(BASE_DIR, 'data', 'misc', 'OLT_Location*.xlsx')), key=os.path.getmtime, reverse=True)
             loc_file = files[0] if files else None
 
-    # Find device and board files
+    # Find device, board, speed, and corporate files
     device_files = sorted(glob.glob(os.path.join(BASE_DIR, 'data', 'device', 'Device-*.xlsx')), key=os.path.getmtime, reverse=True)
     device_file = device_files[0] if device_files else None
 
     board_files = sorted(glob.glob(os.path.join(BASE_DIR, 'cardolt', 'Board-*.xlsx')), key=os.path.getmtime, reverse=True)
     board_file = board_files[0] if board_files else None
 
-    if not loc_file or not device_file or not board_file:
+    speed_files = sorted(glob.glob(os.path.join(BASE_DIR, 'oltmaxspeed', 'OLT-Uplink-MaxSpeed*.xlsx')), key=os.path.getmtime, reverse=True)
+    speed_file = speed_files[0] if speed_files else None
+
+    corp_files = sorted(glob.glob(os.path.join(BASE_DIR, 'data', 'onu', 'QRun_Corporate_*.xlsx')), key=os.path.getmtime, reverse=True)
+    corp_file = corp_files[0] if corp_files else None
+
+    if not loc_file or not device_file or not board_file or not speed_file or not corp_file:
         print("Error: Missing required files.")
         return
 
     print(f"Using location file: {loc_file}")
     print(f"Using device file:   {device_file}")
     print(f"Using board file:    {board_file}")
+    print(f"Using speed file:    {speed_file}")
+    print(f"Using corp file:     {corp_file}")
 
     # 3. Load Device Master to map OLT name -> Model & OLT Type
     print("Loading Device master...")
@@ -66,6 +74,43 @@ def main():
         if name:
             device_models[name] = model
             device_types[name] = typ
+
+    # 3.2. Load Corporate Links to count corp connections per OLT
+    print("Loading Corporate links...")
+    df_corp = pd.read_excel(corp_file)
+    corp_counts = df_corp['OLT_NAME'].value_counts().to_dict()
+    corp_map = {}
+    for name, cnt in corp_counts.items():
+        std_name = str(name).strip().upper().replace('GO0', 'G00')
+        corp_map[std_name] = corp_map.get(std_name, 0) + int(cnt)
+
+    # 3.5. Load OLT Uplink Speed, ONU Count and PON Port configuration
+    print("Loading OLT Uplink speed and ports...")
+    df_speed = pd.read_excel(speed_file)
+    speed_map = {}
+    onu_count_map = {}
+    ports_use_map = {}
+    ports_total_map = {}
+    for _, row in df_speed.iterrows():
+        dev_name = str(row.get('Device', '')).strip().upper().replace('GO0', 'G00')
+        speed_descr = str(row.get('MaxSpeedDescr', '')).strip()
+        onu_cnt = int(row.get('ONU Count', 0)) if not pd.isna(row.get('ONU Count')) else 0
+        p_used = int(row.get('PON Port Used', 0)) if not pd.isna(row.get('PON Port Used')) else 0
+        p_total = int(row.get('PON Port Count', 0)) if not pd.isna(row.get('PON Port Count')) else 0
+        if not dev_name:
+            continue
+        # Normalize speed
+        norm_speed = "-"
+        if "10" in speed_descr:
+            norm_speed = "10G"
+        elif "1" in speed_descr:
+            norm_speed = "1G"
+        elif speed_descr and speed_descr.lower() != 'nan':
+            norm_speed = speed_descr
+        speed_map[dev_name] = norm_speed
+        onu_count_map[dev_name] = onu_cnt
+        ports_use_map[dev_name] = p_used
+        ports_total_map[dev_name] = p_total
 
     # 4. Load Board status file and build boards lists
     print("Loading Board status...")
@@ -122,7 +167,6 @@ def main():
             continue
             
         clli_std = clli.replace('GO0', 'G00')
-        
         vendor = str(row.get('VENDOR_NAME', '')).strip().upper()
         
         model = device_models.get(clli_std, "")
@@ -139,7 +183,16 @@ def main():
             
         ports = int(row.get('PORT_PON_TOTAL', 0)) if not pd.isna(row.get('PORT_PON_TOTAL')) else 0
         ports_use = int(row.get('PORT_PON_USE', 0)) if not pd.isna(row.get('PORT_PON_USE')) else 0
-        ports_avail = int(row.get('PORT_PON_AVAILABLE', 0)) if not pd.isna(row.get('PORT_PON_AVAILABLE')) else 0
+        
+        # Override ports_use and ports total from OLT-Uplink-MaxSpeed if available
+        p_use_override = ports_use_map.get(clli_std, ports_use_map.get(clli, None))
+        if p_use_override is not None:
+            ports_use = p_use_override
+        p_total_override = ports_total_map.get(clli_std, ports_total_map.get(clli, None))
+        if p_total_override is not None:
+            ports = p_total_override
+            
+        ports_avail = max(0, ports - ports_use)
         
         cards_total = int(row.get('CARD_OLT_TOTAL', 0)) if not pd.isna(row.get('CARD_OLT_TOTAL')) else 0
         edfa_cards = int(row.get('CARD_EDFA_TOTAL', 0)) if not pd.isna(row.get('CARD_EDFA_TOTAL')) else 0
@@ -171,7 +224,10 @@ def main():
             "ports_avail": ports_avail,
             "boards": boards_map.get(clli_std, boards_map.get(clli, [])),
             "edfa_model": hist['edfa_model'],
-            "edfa_vendor": hist['edfa_vendor']
+            "edfa_vendor": hist['edfa_vendor'],
+            "uplink_duplex": speed_map.get(clli_std, speed_map.get(clli, "-")),
+            "onu_count": onu_count_map.get(clli_std, onu_count_map.get(clli, 0)),
+            "corp_links": corp_map.get(clli_std, corp_map.get(clli, 0))
         }
 
     # 6. Save new JSON
@@ -183,7 +239,6 @@ def main():
     print(f"Embedding in {HTML_PATH}...")
     if os.path.exists(HTML_PATH):
         json_str = json.dumps(new_data, ensure_ascii=False)
-        
         new_lines = []
         replaced = False
         with open(HTML_PATH, 'r', encoding='utf-8') as f:
