@@ -93,7 +93,7 @@ def main():
     device_models = {}
     device_types = {}
     for _, row in df_dev.iterrows():
-        name = str(row.get('Device Name', '')).strip().upper()
+        name = str(row.get('Device Name', '')).strip().upper().replace('GO0', 'G00')
         model = str(row.get('Model', '')).strip()
         typ = str(row.get('OLT Type', '')).strip().lower()
         if name:
