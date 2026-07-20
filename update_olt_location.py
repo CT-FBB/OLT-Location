@@ -1,7 +1,9 @@
 import os
 import glob
+import re
 import pandas as pd
 import json
+from datetime import datetime
 
 # Define paths
 BASE_DIR = '/Users/bbae/GPTCodex'
@@ -290,25 +292,50 @@ def main():
 
     # 7. Embed in HTML
     print(f"Embedding in {HTML_PATH}...")
+
+    # Determine as_of date from the inventory filename
+    inv_basename = os.path.basename(loc_file)  # e.g. inventory_port_olt_20260720.xlsx
+    date_match = re.search(r'(\d{8})', inv_basename)
+    if date_match:
+        raw_date = date_match.group(1)  # '20260720'
+        try:
+            dt = datetime.strptime(raw_date, '%Y%m%d')
+            as_of_str = dt.strftime('%d %b %Y')  # '20 Jul 2026'
+        except ValueError:
+            as_of_str = raw_date
+    else:
+        as_of_str = datetime.now().strftime('%d %b %Y')
+
     if os.path.exists(HTML_PATH):
         json_str = json.dumps(new_data, ensure_ascii=False)
         new_lines = []
-        replaced = False
+        replaced_data = False
+        replaced_asof = False
         with open(HTML_PATH, 'r', encoding='utf-8') as f:
             for line in f:
                 if line.startswith('const locationData ='):
                     new_lines.append(f'const locationData = {json_str};\n')
-                    replaced = True
+                    replaced_data = True
+                elif 'id="asOfDate"' in line:
+                    # Replace the content inside the as-of span
+                    new_line = re.sub(r'(<span[^>]*id="asOfDate"[^>]*>)[^<]*(</span>)',
+                                      f'\\g<1>{as_of_str}\\g<2>', line)
+                    new_lines.append(new_line)
+                    replaced_asof = True
                 else:
                     new_lines.append(line)
-                    
-        if replaced:
+
+        if replaced_data:
             with open(HTML_PATH, 'w', encoding='utf-8') as f:
                 f.writelines(new_lines)
             print("Successfully updated embedded locationData in HTML.")
+            if replaced_asof:
+                print(f"AS OF date updated to: {as_of_str}")
+            else:
+                print(f"Note: asOfDate span not found in HTML (will appear after first HTML update).")
         else:
             print("Error: Could not find 'const locationData =' line in HTML.")
-                
+
     print("Update Completed Successfully!")
 
 if __name__ == '__main__':
