@@ -49,16 +49,13 @@ def main():
             print(f"Error loading historical JSON: {e}")
 
     # 2. Identify latest files
-    loc_file = os.path.join(BASE_DIR, 'reports', 'inventory_port_olt_20260713.xlsx')
-    if not os.path.exists(loc_file):
-        # Fallback to the latest in reports/
-        files = sorted(glob.glob(os.path.join(BASE_DIR, 'reports', 'inventory_port_olt_*.xlsx')), key=os.path.getmtime, reverse=True)
-        if files:
-            loc_file = files[0]
-        else:
-            # Fallback to data/misc
-            files = sorted(glob.glob(os.path.join(BASE_DIR, 'data', 'misc', 'OLT_Location*.xlsx')), key=os.path.getmtime, reverse=True)
-            loc_file = files[0] if files else None
+    files = sorted(glob.glob(os.path.join(BASE_DIR, 'reports', 'inventory_port_olt_*.xlsx')), key=os.path.getmtime, reverse=True)
+    if files:
+        loc_file = files[0]
+    else:
+        # Fallback to data/misc
+        files = sorted(glob.glob(os.path.join(BASE_DIR, 'data', 'misc', 'OLT_Location*.xlsx')), key=os.path.getmtime, reverse=True)
+        loc_file = files[0] if files else None
 
     # Find device, board, speed, and corporate files
     device_files = sorted(glob.glob(os.path.join(BASE_DIR, 'data', 'device', 'Device-*.xlsx')), key=os.path.getmtime, reverse=True)
