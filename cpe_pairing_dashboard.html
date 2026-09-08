@@ -1,0 +1,2511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CPE Pairing & Roles (ACS) Dashboard</title>
+    
+    <script>
+    if (window.self !== window.top) document.documentElement.classList.add('in-iframe');
+    </script>
+    
+    <!-- External libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* ── CSS VARIABLES & DESIGN SYSTEM ── */
+        :root {
+            --bg-color: #030712;
+            --card-bg: rgba(17, 24, 39, 0.65);
+            --card-bg-hover: rgba(31, 41, 55, 0.75);
+            --border-color: rgba(255, 255, 255, 0.06);
+            --border-color-hover: rgba(99, 102, 241, 0.25);
+            --text-primary: #f9fafb;
+            --text-secondary: #9ca3af;
+            --text-muted: #6b7280;
+            --cyan: #06b6d4;
+            --indigo: #6366f1;
+            --violet: #8b5cf6;
+            --emerald: #10b981;
+            --rose: #f43f5e;
+            --amber: #f59e0b;
+            --font-display: 'Outfit', sans-serif;
+            --font-body: 'Inter', sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: radial-gradient(circle at top, #0b0f19 0%, #030712 100%);
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            min-height: 100vh;
+            padding: 24px;
+            padding-top: 84px; /* offset for nav bar */
+            line-height: 1.5;
+        }
+
+        /* iframe exceptions */
+        html.in-iframe { overflow-y: auto !important; }
+        html.in-iframe body { padding: 0 !important; }
+        html.in-iframe nav.topnav { display: none !important; }
+
+        .dashboard-container {
+            max-width: 100%;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* ── TOP NAV BAR ── */
+        .topnav {
+            height: 60px;
+            background: rgba(13, 18, 34, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            display: grid;
+            grid-template-columns: 250px 1fr 250px;
+            align-items: center;
+            padding: 0 2rem;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 9999;
+        }
+        .topnav-logo {
+            font-family: var(--font-display);
+            font-size: 1.25rem;
+            color: #f8fafc;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            justify-self: start;
+        }
+        .topnav-logo span {
+            background: linear-gradient(135deg, #06b6d4, #6366f1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .topnav-links {
+            display: flex;
+            gap: 8px;
+            height: 100%;
+            align-items: center;
+            justify-self: center;
+        }
+        .topnav-right {
+            justify-self: end;
+            display: flex;
+            align-items: center;
+        }
+        .topnav-links a {
+            display: flex;
+            align-items: center;
+            height: 40px;
+            padding: 0 16px;
+            color: #94a3b8;
+            text-decoration: none;
+            font-size: 0.95rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            border-radius: 8px;
+            box-sizing: border-box;
+        }
+        .topnav-links a:hover {
+            color: #f8fafc;
+            background: rgba(255,255,255,0.03);
+        }
+        .topnav-links a.active {
+            color: #f8fafc;
+            background: rgba(6, 182, 212, 0.15);
+            font-weight: 600;
+            border: 1px solid rgba(6, 182, 212, 0.2);
+        }
+
+        /* ── HEADER ── */
+        .header {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(3, 7, 18, 0.4) 100%);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 24px 32px;
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+
+        .header-title h1 {
+            font-family: var(--font-display);
+            font-size: 2.0rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #06b6d4, #6366f1, #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.02em;
+        }
+
+        .header-title .sub {
+            color: var(--text-secondary);
+            font-size: 0.92rem;
+            margin-top: 4px;
+        }
+
+        .compile-badge {
+            padding: 6px 14px;
+            border-radius: 30px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            font-family: var(--font-display);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            background: rgba(139, 92, 246, 0.12);
+            color: #c084fc;
+        }
+
+        /* ── KPI GRID ── */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .kpi-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 20px 24px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            backdrop-filter: blur(10px);
+        }
+
+        .kpi-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--indigo);
+            opacity: 0.8;
+        }
+
+        .kpi-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--border-color-hover);
+            background: var(--card-bg-hover);
+            box-shadow: 0 10px 20px -10px rgba(99, 102, 241, 0.15);
+        }
+
+        /* Card color modifiers */
+        .kpi-card.blue::before { background: #3b82f6; }
+        .kpi-card.purple::before { background: #8b5cf6; }
+        .kpi-card.emerald::before { background: #10b981; }
+        .kpi-card.cyan::before { background: #06b6d4; }
+        .kpi-card.rose::before { background: #f43f5e; }
+        .kpi-card.amber::before { background: #f59e0b; }
+
+        .kpi-card.amber {
+            background: rgba(245, 158, 11, 0.04);
+            border-color: rgba(245, 158, 11, 0.15);
+        }
+        .kpi-card.amber:hover {
+            background: rgba(245, 158, 11, 0.08);
+            border-color: rgba(245, 158, 11, 0.3);
+        }
+
+        .kpi-title {
+            font-size: 0.82rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .kpi-value {
+            font-family: var(--font-display);
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: var(--text-primary);
+            line-height: 1.2;
+        }
+
+        .kpi-sub {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            margin-top: 6px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .kpi-badge {
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.65rem;
+            font-weight: 700;
+            background: rgba(245, 158, 11, 0.15);
+            color: #fbbf24;
+            border: 1px solid rgba(245, 158, 11, 0.2);
+        }
+
+        /* Tooltip style */
+        .tooltip-icon {
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.15);
+            font-size: 0.65rem;
+            color: var(--text-primary);
+            position: relative;
+        }
+        
+        .tooltip-icon:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 24px;
+            right: -20px;
+            width: 220px;
+            background: #111827;
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #e5e7eb;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            line-height: 1.3;
+            z-index: 1000;
+            white-space: normal;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+            text-transform: none;
+            font-weight: normal;
+            letter-spacing: normal;
+        }
+
+        /* ── CHARTS CONTAINER ── */
+        .charts-row {
+            display: grid;
+            grid-template-columns: 1.2fr 0.8fr;
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        @media (max-width: 900px) {
+            .charts-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .chart-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            backdrop-filter: blur(10px);
+        }
+
+        .chart-header {
+            margin-bottom: 16px;
+        }
+
+        .chart-title {
+            font-family: var(--font-display);
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .chart-subtitle {
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        .canvas-container {
+            position: relative;
+            flex-grow: 1;
+            min-height: 260px;
+            max-height: 320px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* ── DATA SECTION & TABS ── */
+        .data-section {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 24px;
+            backdrop-filter: blur(10px);
+            margin-bottom: 30px;
+        }
+
+        .tabs-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 14px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .tabs-list {
+            display: flex;
+            gap: 6px;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: 1px solid transparent;
+            color: var(--text-secondary);
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .tab-btn.active {
+            color: var(--text-primary);
+            background: rgba(99, 102, 241, 0.15);
+            border-color: rgba(99, 102, 241, 0.25);
+            font-weight: 600;
+        }
+
+        /* Controls: Search & Export */
+        .table-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .search-control {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 0.88rem;
+            outline: none;
+            width: 260px;
+            transition: all 0.2s ease;
+        }
+
+        .search-control:focus {
+            border-color: var(--indigo);
+            background: rgba(255, 255, 255, 0.06);
+            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.25);
+        }
+
+        .btn {
+            background: var(--indigo);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.88rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .btn:hover {
+            background: #4f46e5;
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: var(--text-secondary);
+        }
+
+        /* ── TABLE STYLES ── */
+        .table-container {
+            overflow-x: auto;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            background: rgba(3, 7, 18, 0.2);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.9rem;
+        }
+
+        th {
+            background: rgba(13, 18, 34, 0.5);
+            color: var(--text-secondary);
+            font-weight: 600;
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.2s ease;
+        }
+
+        th:hover {
+            background: rgba(13, 18, 34, 0.8);
+            color: var(--text-primary);
+        }
+
+        td {
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-primary);
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr {
+            transition: background 0.15s ease;
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        /* Badges inside tables */
+        .table-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .table-badge.hgw {
+            background: rgba(16, 185, 129, 0.12);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+        .table-badge.mesh {
+            background: rgba(6, 182, 212, 0.12);
+            color: #22d3ee;
+            border: 1px solid rgba(6, 182, 212, 0.2);
+        }
+        .table-badge.ap {
+            background: rgba(244, 63, 94, 0.12);
+            color: #fb7185;
+            border: 1px solid rgba(244, 63, 94, 0.2);
+        }
+        .table-badge.routing-ont-mesh {
+            background: rgba(99, 102, 241, 0.12);
+            color: #818cf8;
+            border: 1px solid rgba(99, 102, 241, 0.2);
+        }
+        .table-badge.two-box {
+            background: rgba(139, 92, 246, 0.12);
+            color: #c084fc;
+            border: 1px solid rgba(139, 92, 246, 0.2);
+        }
+        .table-badge.as-mesh {
+            background: rgba(6, 182, 212, 0.12);
+            color: #22d3ee;
+            border: 1px solid rgba(6, 182, 212, 0.2);
+        }
+        .table-badge.other-pairing {
+            background: rgba(244, 63, 94, 0.12);
+            color: #fb7185;
+            border: 1px solid rgba(244, 63, 94, 0.2);
+        }
+        .table-badge.potential {
+            background: rgba(245, 158, 11, 0.15);
+            color: #fbbf24;
+            border: 1px solid rgba(245, 158, 11, 0.25);
+            font-size: 0.68rem;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.8; }
+            50% { opacity: 1; }
+            100% { opacity: 0.8; }
+        }
+
+        .sort-indicator {
+            margin-left: 4px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .empty-row {
+            text-align: center;
+            color: var(--text-secondary);
+            padding: 30px !important;
+            font-style: italic;
+        }
+    
+        .dropdown {
+            position: relative;
+            display: flex;
+            align-items: center;
+            height: 100%;
+        }
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            background-color: #1e293b;
+            min-width: 160px;
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.5);
+            z-index: 10000;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.1);
+            top: 50px;
+            left: 0;
+            overflow: hidden;
+        }
+        .dropdown-content a {
+            color: #94a3b8;
+            padding: 12px 16px;
+            text-decoration: none;
+            display: block;
+            height: auto;
+            border-radius: 0;
+            border: none;
+            font-size: 0.95rem;
+            transition: all 0.2s;
+        }
+        .dropdown-content a:hover {
+            background-color: rgba(255,255,255,0.05);
+            color: #f8fafc;
+        }
+        .dropdown:hover .dropdown-content {
+            display: block;
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- TOP NAVIGATION BAR -->
+    <nav class="topnav">
+        <div class="topnav-logo">📦 <span>BCPE Monitor</span></div>
+        <div class="topnav-links">
+            <a href="index.html">Device (ACS)</a>
+            <a href="onu_model_dashboard.html" id="nav-onumodel">ONU (QRUN)</a>
+            <a href="cpe_pairing_dashboard.html" id="nav-cpepairing" class="active">CPE Pairing (ACS)</a>
+            <a href="ftth_fttb_trend_dashboard.html" id="nav-mbtrend">FTTH/FTTB Trend (MB)</a>
+        </div>
+        <div class="topnav-right"></div>
+    </nav>
+
+    <div class="dashboard-container">
+        
+        <!-- HEADER -->
+        <header class="header">
+            <div class="header-title">
+                <h1>CPE Pairing & Network Roles Summary</h1>
+                <div class="sub">วิเคราะห์การพ่วงขยายสัญญาณตามรหัสลูกค้า (HGW, Mesh, AP และโอกาสทางการตลาดสำหรับ FTTR)</div>
+            </div>
+            <div class="compile-badge">
+                📅 AS OF: <span id="as-of-date-badge">-</span>
+            </div>
+        </header>
+
+        <!-- KPI GRID -->
+        <div class="kpi-grid">
+            <div class="kpi-card blue">
+                <div class="kpi-title">Active Subscribers</div>
+                <div class="kpi-value" id="kpi-subscribers">-</div>
+                <div class="kpi-sub">จำนวนครัวเรือน (LOIDs) ทั้งหมดในระบบ</div>
+            </div>
+            
+            <div class="kpi-card purple">
+                <div class="kpi-title">Multi-device Homes</div>
+                <div class="kpi-value" id="kpi-multi-homes">-</div>
+                <div class="kpi-sub" id="kpi-multi-share">บ้านที่พ่วงอุปกรณ์ &ge; 2 เครื่อง</div>
+            </div>
+            
+            <div class="kpi-card amber">
+                <div class="kpi-title">
+                    <span>FTTR Leads (3+ Devices)</span>
+                    <span class="kpi-badge">High Value</span>
+                </div>
+                <div class="kpi-value" id="kpi-fttr-leads">-</div>
+                <div class="kpi-sub" id="kpi-fttr-share">บ้านใหญ่ที่มีความต้องการ AP สูง</div>
+            </div>
+            
+            <div class="kpi-card cyan">
+                <div class="kpi-title">Mesh Access Points</div>
+                <div class="kpi-value" id="kpi-mesh">-</div>
+                <div class="kpi-sub" id="kpi-mesh-share">ตัวเสริมสัญญาณแบบ Smart Mesh</div>
+            </div>
+            
+            <div class="kpi-card rose">
+                <div class="kpi-title">
+                    <span>2-Box / Standalone APs</span>
+                    <span class="tooltip-icon" data-tooltip="อุปกรณ์ AP ที่ลงทะเบียนเดี่ยวใน ACS (กล่อง ONT หลักบริดจ์โปร่งใส / สัญญาณตกหล่น) หรือตัวพ่วงในชุด 2-box">?</span>
+                </div>
+                <div class="kpi-value" id="kpi-ap">-</div>
+                <div class="kpi-sub" id="kpi-ap-share">ตัวกระจายสัญญาณเสริมชั้นที่สอง</div>
+            </div>
+        </div>
+
+        <!-- CHARTS SECTION -->
+        <div class="charts-row">
+            <div class="chart-card">
+                <div class="chart-header">
+                    <div class="chart-title">Pairing Configuration Type Distribution</div>
+                    <div class="chart-subtitle">สัดส่วนของรูปแบบชุดอุปกรณ์กระจายสัญญาณ Wi-Fi ของบ้านที่มีอุปกรณ์ขยายสัญญาณ</div>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="pairingChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="chart-card">
+                <div class="chart-header">
+                    <div class="chart-title">Devices Count per Household</div>
+                    <div class="chart-subtitle">สัดส่วนจำนวนอุปกรณ์ต่อหนึ่งสายผู้ใช้งานอินเทอร์เน็ต</div>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="devCountChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- DATA SECTION -->
+        <div class="data-section">
+            <div class="tabs-header">
+                <div class="tabs-list">
+                    <button class="tab-btn active" onclick="switchTab('pairings')">Model Pairings (การจับคู่ยอดนิยม)</button>
+                    <button class="tab-btn" onclick="switchTab('roles')">Device Roles (สถิติแยกตามรุ่น)</button>
+                    <button class="tab-btn" onclick="switchTab('fttr')">FTTR Upgrade Potentials (โอกาสทางการขาย)</button>
+                </div>
+                <div class="table-controls">
+                    <input type="text" id="tableSearch" class="search-control" placeholder="ค้นหาข้อมูล..." onkeyup="onSearchInput()">
+                    <button class="btn btn-secondary" onclick="exportDataExcel()">📥 Export Excel</button>
+                </div>
+            </div>
+
+            <!-- TAB CONTENT: Pairings -->
+            <div id="tab-pairings" class="tab-content">
+                <div class="table-container">
+                    <table id="pairings-table">
+                        <thead>
+                            <tr>
+                                <th onclick="sortTabTable('pairings', 0)">HGW Model (กล่องหลัก) <span class="sort-indicator">↕</span></th>
+                                <th onclick="sortTabTable('pairings', 1)">Secondary Model (กล่องเสริม) <span class="sort-indicator">↕</span></th>
+                                <th onclick="sortTabTable('pairings', 2)">Pairing Type <span class="sort-indicator">↕</span></th>
+                                <th onclick="sortTabTable('pairings', 3)">Count (จำนวนคู่) <span class="sort-indicator">↕</span></th>
+                                <th onclick="sortTabTable('pairings', 4)">Share of Pairings (%) <span class="sort-indicator">↕</span></th>
+                            </tr>
+                        </thead>
+                        <tbody id="pairings-table-body">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TAB CONTENT: Roles -->
+            <div id="tab-roles" class="tab-content" style="display: none;">
+                <!-- Nested role-type selector -->
+                <div style="margin-bottom: 16px; display: flex; gap: 8px;">
+                    <button id="subtab-hgw-btn" class="tab-btn active" onclick="switchRoleSubTab('HGW')">HGW Models</button>
+                    <button id="subtab-mesh-btn" class="tab-btn" onclick="switchRoleSubTab('Mesh')">Mesh Models</button>
+                    <button id="subtab-ap-btn" class="tab-btn" onclick="switchRoleSubTab('AP')">AP Models</button>
+                </div>
+                <div class="table-container">
+                    <table id="roles-table">
+                        <thead>
+                            <tr>
+                                <th onclick="sortTabTable('roles', 0)">Product Class (โมเดล) <span class="sort-indicator">↕</span></th>
+                                <th onclick="sortTabTable('roles', 1)">Network Role <span class="sort-indicator">↕</span></th>
+                                <th onclick="sortTabTable('roles', 2)">Total Devices <span class="sort-indicator">↕</span></th>
+                                <th onclick="sortTabTable('roles', 3)">Share of Role (%) <span class="sort-indicator">↕</span></th>
+                            </tr>
+                        </thead>
+                        <tbody id="roles-table-body">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TAB CONTENT: FTTR Opportunities -->
+            <div id="tab-fttr" class="tab-content" style="display: none;">
+                <div style="background: rgba(245,158,11,0.06); border: 1px solid rgba(245,158,11,0.15); border-radius: 12px; padding: 16px; margin-bottom: 20px; font-size: 0.9rem;">
+                    💡 <strong>โอกาสการขายอัปเกรด FTTR:</strong> รายชื่อโมเดลเกตเวย์ HGW หลักที่พบในบ้านกลุ่ม 3+ Devices (จำนวน <span id="fttr-total-households">...</span> ครัวเรือน) ซึ่งมีพฤติกรรมความต้องการ Wi-Fi ความครอบคลุมสูง เหมาะสำหรับการทำการตลาดนำเสนอแพ็กเกจ Fiber-to-the-Room (FTTR) เป็นอันดับแรก ๆ
+                </div>
+                <div class="table-container">
+                    <table id="fttr-table">
+                        <thead>
+                            <tr>
+                                <th onclick="sortTabTable('fttr', 0)">HGW Model (กล่องหลักปัจจุบัน) <span class="sort-indicator">↕</span></th>
+                                <th onclick="sortTabTable('fttr', 1)">FTTR Candidate Households (ราย) <span class="sort-indicator">↕</span></th>
+                                <th onclick="sortTabTable('fttr', 2)">Share of FTTR Pool (%) <span class="sort-indicator">↕</span></th>
+                                <th>Sales Potential <span class="sort-indicator">↕</span></th>
+                            </tr>
+                        </thead>
+                        <tbody id="fttr-table-body">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- DATA BLOCK -->
+    <script>
+        const dashboardData = {
+  "total_devices": 3536501,
+  "total_subscribers": 3233707,
+  "device_roles": {
+    "HGW": 3233707,
+    "Mesh": 209992,
+    "AP": 92802
+  },
+  "household_devices_dist": {
+    "1_device": 2943906,
+    "2_devices": 278925,
+    "3_plus_devices": 10876
+  },
+  "pairing_types_dist": {
+    "routing_ont_mesh": 107966,
+    "2-box": 74081,
+    "as_mesh": 107740,
+    "other_pairing": 14
+  },
+  "top_hgw_models": [
+    {
+      "ProductClass": "T626ProV2",
+      "Type": "HGW",
+      "TotalDevices": 1023369,
+      "Share": 30.565883211731155
+    },
+    {
+      "ProductClass": "T623L",
+      "Type": "HGW",
+      "TotalDevices": 378564,
+      "Share": 11.306911790532832
+    },
+    {
+      "ProductClass": "GN542VF",
+      "Type": "HGW",
+      "TotalDevices": 357538,
+      "Share": 10.678909319860121
+    },
+    {
+      "ProductClass": "T626Pro",
+      "Type": "HGW",
+      "TotalDevices": 323284,
+      "Share": 9.655814264670216
+    },
+    {
+      "ProductClass": "ST-244F",
+      "Type": "HGW",
+      "TotalDevices": 170761,
+      "Share": 5.100272514721889
+    },
+    {
+      "ProductClass": "T625LM",
+      "Type": "HGW",
+      "TotalDevices": 142128,
+      "Share": 4.2450649268415654
+    },
+    {
+      "ProductClass": "F688",
+      "Type": "HGW",
+      "TotalDevices": 138550,
+      "Share": 4.138197579744308
+    },
+    {
+      "ProductClass": "T625Pro",
+      "Type": "HGW",
+      "TotalDevices": 132579,
+      "Share": 3.9598563473469537
+    },
+    {
+      "ProductClass": "HG8247W5-6T",
+      "Type": "HGW",
+      "TotalDevices": 120389,
+      "Share": 3.595766643290057
+    },
+    {
+      "ProductClass": "T623",
+      "Type": "HGW",
+      "TotalDevices": 80901,
+      "Share": 2.416342998187616
+    },
+    {
+      "ProductClass": "F6600P",
+      "Type": "HGW",
+      "TotalDevices": 66639,
+      "Share": 1.9903670048111215
+    },
+    {
+      "ProductClass": "T628L",
+      "Type": "HGW",
+      "TotalDevices": 64974,
+      "Share": 1.940636950893588
+    },
+    {
+      "ProductClass": "HG8247H",
+      "Type": "HGW",
+      "TotalDevices": 62444,
+      "Share": 1.8650711632591375
+    },
+    {
+      "ProductClass": "T628",
+      "Type": "HGW",
+      "TotalDevices": 57935,
+      "Share": 1.7303968010284116
+    },
+    {
+      "ProductClass": "F668",
+      "Type": "HGW",
+      "TotalDevices": 31178,
+      "Share": 0.9312213940185348
+    },
+    {
+      "ProductClass": "T627Pro",
+      "Type": "HGW",
+      "TotalDevices": 30046,
+      "Share": 0.8974109309346622
+    },
+    {
+      "ProductClass": "ST-244FV2",
+      "Type": "HGW",
+      "TotalDevices": 29054,
+      "Share": 0.8677819738858974
+    },
+    {
+      "ProductClass": "F612C",
+      "Type": "HGW",
+      "TotalDevices": 24546,
+      "Share": 0.7331374795554223
+    },
+    {
+      "ProductClass": "HG8122",
+      "Type": "HGW",
+      "TotalDevices": 20070,
+      "Share": 0.5994487580329718
+    },
+    {
+      "ProductClass": "H662GR",
+      "Type": "HGW",
+      "TotalDevices": 18837,
+      "Share": 0.5626216370237713
+    },
+    {
+      "ProductClass": "GN2000-02GS-1VT",
+      "Type": "HGW",
+      "TotalDevices": 12035,
+      "Share": 0.35946017951802767
+    },
+    {
+      "ProductClass": "HT803G-UA",
+      "Type": "HGW",
+      "TotalDevices": 11386,
+      "Share": 0.3400759122552774
+    },
+    {
+      "ProductClass": "HG6145F4",
+      "Type": "HGW",
+      "TotalDevices": 11058,
+      "Share": 0.3302792409730245
+    },
+    {
+      "ProductClass": "AN5506-04-CG",
+      "Type": "HGW",
+      "TotalDevices": 9896,
+      "Share": 0.2955727408816287
+    },
+    {
+      "ProductClass": "HG8247W5",
+      "Type": "HGW",
+      "TotalDevices": 7902,
+      "Share": 0.23601614778159158
+    },
+    {
+      "ProductClass": "T7281",
+      "Type": "HGW",
+      "TotalDevices": 7029,
+      "Share": 0.2099414708626686
+    },
+    {
+      "ProductClass": "F6620",
+      "Type": "HGW",
+      "TotalDevices": 4288,
+      "Share": 0.1280735562753056
+    },
+    {
+      "ProductClass": "T6825G",
+      "Type": "HGW",
+      "TotalDevices": 2454,
+      "Share": 0.07329582721539177
+    },
+    {
+      "ProductClass": "AN5121-4G",
+      "Type": "HGW",
+      "TotalDevices": 1941,
+      "Share": 0.0579735943867463
+    },
+    {
+      "ProductClass": "AN5121-4G-B05",
+      "Type": "HGW",
+      "TotalDevices": 1939,
+      "Share": 0.05791385858624475
+    },
+    {
+      "ProductClass": "GN2000-04GS-2VT",
+      "Type": "HGW",
+      "TotalDevices": 1394,
+      "Share": 0.04163585294957462
+    },
+    {
+      "ProductClass": "V163",
+      "Type": "HGW",
+      "TotalDevices": 1207,
+      "Share": 0.036050555602680466
+    },
+    {
+      "ProductClass": "HG6249A",
+      "Type": "HGW",
+      "TotalDevices": 844,
+      "Share": 0.02520850781165063
+    },
+    {
+      "ProductClass": "T723",
+      "Type": "HGW",
+      "TotalDevices": 427,
+      "Share": 0.012753593407079171
+    },
+    {
+      "ProductClass": "F6600R",
+      "Type": "HGW",
+      "TotalDevices": 289,
+      "Share": 0.008631823172472788
+    },
+    {
+      "ProductClass": "G6605",
+      "Type": "HGW",
+      "TotalDevices": 85,
+      "Share": 0.002538771521315526
+    },
+    {
+      "ProductClass": "HG8141XR-10",
+      "Type": "HGW",
+      "TotalDevices": 62,
+      "Share": 0.0018518098155477951
+    },
+    {
+      "ProductClass": "H660RW",
+      "Type": "HGW",
+      "TotalDevices": 34,
+      "Share": 0.0010155086085262104
+    },
+    {
+      "ProductClass": "V261a-20",
+      "Type": "HGW",
+      "TotalDevices": 6,
+      "Share": 0.00017920740150462533
+    },
+    {
+      "ProductClass": "ST-GPON",
+      "Type": "HGW",
+      "TotalDevices": 3,
+      "Share": 8.960370075231267e-05
+    },
+    {
+      "ProductClass": "G8605",
+      "Type": "HGW",
+      "TotalDevices": 2,
+      "Share": 5.973580050154178e-05
+    },
+    {
+      "ProductClass": "F6605P",
+      "Type": "HGW",
+      "TotalDevices": 2,
+      "Share": 5.973580050154178e-05
+    },
+    {
+      "ProductClass": "HG6246R",
+      "Type": "HGW",
+      "TotalDevices": 2,
+      "Share": 5.973580050154178e-05
+    },
+    {
+      "ProductClass": "HG8045H",
+      "Type": "HGW",
+      "TotalDevices": 1,
+      "Share": 2.986790025077089e-05
+    },
+    {
+      "ProductClass": "V281s",
+      "Type": "HGW",
+      "TotalDevices": 1,
+      "Share": 2.986790025077089e-05
+    },
+    {
+      "ProductClass": "F8648P",
+      "Type": "HGW",
+      "TotalDevices": 1,
+      "Share": 2.986790025077089e-05
+    },
+    {
+      "ProductClass": "T528",
+      "Type": "HGW",
+      "TotalDevices": 1,
+      "Share": 2.986790025077089e-05
+    },
+    {
+      "ProductClass": "F600G",
+      "Type": "HGW",
+      "TotalDevices": 1,
+      "Share": 2.986790025077089e-05
+    }
+  ],
+  "top_mesh_models": [
+    {
+      "ProductClass": "A625M",
+      "Type": "Mesh",
+      "TotalDevices": 37756,
+      "Share": 39.444624369247485
+    },
+    {
+      "ProductClass": "A623",
+      "Type": "Mesh",
+      "TotalDevices": 23893,
+      "Share": 24.961606368641544
+    },
+    {
+      "ProductClass": "ZXHN H3601P V9",
+      "Type": "Mesh",
+      "TotalDevices": 11634,
+      "Share": 12.15432672719105
+    },
+    {
+      "ProductClass": "RN510",
+      "Type": "Mesh",
+      "TotalDevices": 10472,
+      "Share": 10.940356668999886
+    },
+    {
+      "ProductClass": "A662",
+      "Type": "Mesh",
+      "TotalDevices": 8228,
+      "Share": 8.595994525642766
+    },
+    {
+      "ProductClass": "A6268",
+      "Type": "Mesh",
+      "TotalDevices": 3381,
+      "Share": 3.532214084977904
+    },
+    {
+      "ProductClass": "A626M",
+      "Type": "Mesh",
+      "TotalDevices": 350,
+      "Share": 0.3656536319852903
+    },
+    {
+      "ProductClass": "A5258",
+      "Type": "Mesh",
+      "TotalDevices": 3,
+      "Share": 0.003134173988445345
+    },
+    {
+      "ProductClass": "K251a-21",
+      "Type": "Mesh",
+      "TotalDevices": 2,
+      "Share": 0.0020894493256302304
+    }
+  ],
+  "top_ap_models": [
+    {
+      "ProductClass": "WR6221-T",
+      "Type": "AP",
+      "TotalDevices": 32147,
+      "Share": 35.258181977713434
+    },
+    {
+      "ProductClass": "RE1200R4GC-V3",
+      "Type": "AP",
+      "TotalDevices": 24083,
+      "Share": 26.4137492322541
+    },
+    {
+      "ProductClass": "T3ATv2",
+      "Type": "AP",
+      "TotalDevices": 19562,
+      "Share": 21.45520751074844
+    },
+    {
+      "ProductClass": "ST-R4D",
+      "Type": "AP",
+      "TotalDevices": 6849,
+      "Share": 7.511845222426955
+    },
+    {
+      "ProductClass": "HG180Ev2",
+      "Type": "AP",
+      "TotalDevices": 3170,
+      "Share": 3.476792138282004
+    },
+    {
+      "ProductClass": "IGD",
+      "Type": "AP",
+      "TotalDevices": 2672,
+      "Share": 2.9305957708168817
+    },
+    {
+      "ProductClass": "SR120-A",
+      "Type": "AP",
+      "TotalDevices": 1456,
+      "Share": 1.596911467930157
+    },
+    {
+      "ProductClass": "BiPAC 3301DL-T",
+      "Type": "AP",
+      "TotalDevices": 576,
+      "Share": 0.631745196104238
+    },
+    {
+      "ProductClass": "ZXHN H198A V3.0",
+      "Type": "AP",
+      "TotalDevices": 402,
+      "Share": 0.4409055014477494
+    },
+    {
+      "ProductClass": "RN104R4GC-A3",
+      "Type": "AP",
+      "TotalDevices": 243,
+      "Share": 0.2665175046064754
+    },
+    {
+      "ProductClass": "QT3AT",
+      "Type": "AP",
+      "TotalDevices": 14,
+      "Share": 0.015354917960866896
+    },
+    {
+      "ProductClass": "T3Av2",
+      "Type": "AP",
+      "TotalDevices": 2,
+      "Share": 0.0021935597086952707
+    }
+  ],
+  "top_pairings": [
+    {
+      "HGW": "T626ProV2",
+      "SubDevice": "T626ProV2",
+      "Type": "as_mesh",
+      "Count": 88312,
+      "Percentage": 29.165703415523424
+    },
+    {
+      "HGW": "T626Pro",
+      "SubDevice": "T626Pro",
+      "Type": "as_mesh",
+      "Count": 22470,
+      "Percentage": 7.420886807532513
+    },
+    {
+      "HGW": "T623L",
+      "SubDevice": "A623",
+      "Type": "routing_ont_mesh",
+      "Count": 16701,
+      "Percentage": 5.515631089123298
+    },
+    {
+      "HGW": "T625LM",
+      "SubDevice": "A625M",
+      "Type": "routing_ont_mesh",
+      "Count": 15740,
+      "Percentage": 5.198253598155842
+    },
+    {
+      "HGW": "T625Pro",
+      "SubDevice": "A625M",
+      "Type": "routing_ont_mesh",
+      "Count": 10906,
+      "Percentage": 3.6017886748086156
+    },
+    {
+      "HGW": "GN542VF",
+      "SubDevice": "RN510",
+      "Type": "routing_ont_mesh",
+      "Count": 9824,
+      "Percentage": 3.244450022127255
+    },
+    {
+      "HGW": "T626Pro",
+      "SubDevice": "A625M",
+      "Type": "routing_ont_mesh",
+      "Count": 9578,
+      "Percentage": 3.163206668560143
+    },
+    {
+      "HGW": "F6600P",
+      "SubDevice": "ZXHN H3601P V9",
+      "Type": "routing_ont_mesh",
+      "Count": 8699,
+      "Percentage": 2.8729102954483907
+    },
+    {
+      "HGW": "T623",
+      "SubDevice": "A623",
+      "Type": "routing_ont_mesh",
+      "Count": 6734,
+      "Percentage": 2.2239542395159746
+    },
+    {
+      "HGW": "T628",
+      "SubDevice": "A662",
+      "Type": "routing_ont_mesh",
+      "Count": 5456,
+      "Percentage": 1.801885110008785
+    },
+    {
+      "HGW": "HG8122",
+      "SubDevice": "WR6221-T",
+      "Type": "2-box",
+      "Count": 5284,
+      "Percentage": 1.7450808140187717
+    },
+    {
+      "HGW": "F612C",
+      "SubDevice": "WR6221-T",
+      "Type": "2-box",
+      "Count": 4997,
+      "Percentage": 1.6502969015238085
+    },
+    {
+      "HGW": "HG8247H",
+      "SubDevice": "WR6221-T",
+      "Type": "2-box",
+      "Count": 4727,
+      "Percentage": 1.561127367120881
+    },
+    {
+      "HGW": "F612C",
+      "SubDevice": "RE1200R4GC-V3",
+      "Type": "2-box",
+      "Count": 4350,
+      "Percentage": 1.436620276491608
+    },
+    {
+      "HGW": "HG8247H",
+      "SubDevice": "RE1200R4GC-V3",
+      "Type": "2-box",
+      "Count": 4121,
+      "Percentage": 1.3609913010165327
+    },
+    {
+      "HGW": "H662GR",
+      "SubDevice": "RE1200R4GC-V3",
+      "Type": "2-box",
+      "Count": 3517,
+      "Percentage": 1.1615157499818358
+    },
+    {
+      "HGW": "HG8247H",
+      "SubDevice": "T3ATv2",
+      "Type": "2-box",
+      "Count": 3416,
+      "Percentage": 1.1281597389644444
+    },
+    {
+      "HGW": "H662GR",
+      "SubDevice": "WR6221-T",
+      "Type": "2-box",
+      "Count": 3377,
+      "Percentage": 1.1152796951062438
+    },
+    {
+      "HGW": "HG8122",
+      "SubDevice": "RE1200R4GC-V3",
+      "Type": "2-box",
+      "Count": 3130,
+      "Percentage": 1.0337060840043064
+    },
+    {
+      "HGW": "F612C",
+      "SubDevice": "T3ATv2",
+      "Type": "2-box",
+      "Count": 2864,
+      "Percentage": 0.9458575797406819
+    },
+    {
+      "HGW": "T628L",
+      "SubDevice": "A662",
+      "Type": "routing_ont_mesh",
+      "Count": 2706,
+      "Percentage": 0.8936768892382281
+    },
+    {
+      "HGW": "GN2000-02GS-1VT",
+      "SubDevice": "RE1200R4GC-V3",
+      "Type": "2-box",
+      "Count": 2545,
+      "Percentage": 0.8405054261312972
+    },
+    {
+      "HGW": "GN2000-02GS-1VT",
+      "SubDevice": "WR6221-T",
+      "Type": "2-box",
+      "Count": 2502,
+      "Percentage": 0.8263043521337939
+    },
+    {
+      "HGW": "H662GR",
+      "SubDevice": "T3ATv2",
+      "Type": "2-box",
+      "Count": 2259,
+      "Percentage": 0.7460517711711592
+    },
+    {
+      "HGW": "HT803G-UA",
+      "SubDevice": "WR6221-T",
+      "Type": "2-box",
+      "Count": 2240,
+      "Percentage": 0.7397768780094718
+    },
+    {
+      "HGW": "HG8122",
+      "SubDevice": "T3ATv2",
+      "Type": "2-box",
+      "Count": 2028,
+      "Percentage": 0.6697622806264325
+    },
+    {
+      "HGW": "AN5506-04-CG",
+      "SubDevice": "WR6221-T",
+      "Type": "2-box",
+      "Count": 1982,
+      "Percentage": 0.6545704340244523
+    },
+    {
+      "HGW": "HT803G-UA",
+      "SubDevice": "T3ATv2",
+      "Type": "2-box",
+      "Count": 1828,
+      "Percentage": 0.6037107736613011
+    },
+    {
+      "HGW": "T628",
+      "SubDevice": "A6268",
+      "Type": "routing_ont_mesh",
+      "Count": 1646,
+      "Percentage": 0.5436039023230316
+    },
+    {
+      "HGW": "T626ProV2",
+      "SubDevice": "T626Pro",
+      "Type": "routing_ont_mesh",
+      "Count": 1567,
+      "Percentage": 0.5175135570718046
+    },
+    {
+      "HGW": "GN542VF",
+      "SubDevice": "WR6221-T",
+      "Type": "2-box",
+      "Count": 1530,
+      "Percentage": 0.5052940282832553
+    },
+    {
+      "HGW": "T626Pro",
+      "SubDevice": "T626ProV2",
+      "Type": "routing_ont_mesh",
+      "Count": 1492,
+      "Percentage": 0.4927442419598803
+    },
+    {
+      "HGW": "GN2000-02GS-1VT",
+      "SubDevice": "T3ATv2",
+      "Type": "2-box",
+      "Count": 1414,
+      "Percentage": 0.46698415424347905
+    },
+    {
+      "HGW": "ST-244F",
+      "SubDevice": "IGD",
+      "Type": "2-box",
+      "Count": 1403,
+      "Percentage": 0.46335132136039686
+    },
+    {
+      "HGW": "T628L",
+      "SubDevice": "A6268",
+      "Type": "routing_ont_mesh",
+      "Count": 1281,
+      "Percentage": 0.42305990211166666
+    },
+    {
+      "HGW": "AN5506-04-CG",
+      "SubDevice": "RE1200R4GC-V3",
+      "Type": "2-box",
+      "Count": 1265,
+      "Percentage": 0.41777578155445616
+    },
+    {
+      "HGW": "HG8247H",
+      "SubDevice": "ST-R4D",
+      "Type": "2-box",
+      "Count": 1206,
+      "Percentage": 0.3982905869997424
+    },
+    {
+      "HGW": "T627Pro",
+      "SubDevice": "T627Pro",
+      "Type": "as_mesh",
+      "Count": 1138,
+      "Percentage": 0.3758330746315977
+    },
+    {
+      "HGW": "AN5506-04-CG",
+      "SubDevice": "T3ATv2",
+      "Type": "2-box",
+      "Count": 1064,
+      "Percentage": 0.3513940170544991
+    },
+    {
+      "HGW": "H662GR",
+      "SubDevice": "ST-R4D",
+      "Type": "2-box",
+      "Count": 1056,
+      "Percentage": 0.3487519567758939
+    },
+    {
+      "HGW": "GN542VF",
+      "SubDevice": "RE1200R4GC-V3",
+      "Type": "2-box",
+      "Count": 990,
+      "Percentage": 0.3269549594774005
+    },
+    {
+      "HGW": "T626ProV2",
+      "SubDevice": "A625M",
+      "Type": "routing_ont_mesh",
+      "Count": 954,
+      "Percentage": 0.31506568822367687
+    },
+    {
+      "HGW": "F612C",
+      "SubDevice": "ST-R4D",
+      "Type": "2-box",
+      "Count": 952,
+      "Percentage": 0.3144051731540255
+    },
+    {
+      "HGW": "F668",
+      "SubDevice": "RE1200R4GC-V3",
+      "Type": "2-box",
+      "Count": 919,
+      "Percentage": 0.3035066745047788
+    },
+    {
+      "HGW": "GN542VF",
+      "SubDevice": "T3ATv2",
+      "Type": "2-box",
+      "Count": 827,
+      "Percentage": 0.27312298130081836
+    },
+    {
+      "HGW": "HG8122",
+      "SubDevice": "ST-R4D",
+      "Type": "2-box",
+      "Count": 760,
+      "Percentage": 0.25099572646749935
+    },
+    {
+      "HGW": "T625Pro",
+      "SubDevice": "WR6221-T",
+      "Type": "2-box",
+      "Count": 713,
+      "Percentage": 0.23547362233069347
+    },
+    {
+      "HGW": "F668",
+      "SubDevice": "WR6221-T",
+      "Type": "2-box",
+      "Count": 686,
+      "Percentage": 0.22655666889040074
+    },
+    {
+      "HGW": "ST-244FV2",
+      "SubDevice": "IGD",
+      "Type": "2-box",
+      "Count": 672,
+      "Percentage": 0.22193306340284155
+    },
+    {
+      "HGW": "F668",
+      "SubDevice": "T3ATv2",
+      "Type": "2-box",
+      "Count": 659,
+      "Percentage": 0.217639715450108
+    },
+    {
+      "HGW": "T626ProV2",
+      "SubDevice": "T626ProV2",
+      "Type": "routing_ont_mesh",
+      "Count": 651,
+      "Percentage": 0.21499765517150274
+    },
+    {
+      "HGW": "T626ProV2",
+      "SubDevice": "WR6221-T",
+      "Type": "2-box",
+      "Count": 581,
+      "Percentage": 0.19187962773370676
+    },
+    {
+      "HGW": "GN2000-02GS-1VT",
+      "SubDevice": "ST-R4D",
+      "Type": "2-box",
+      "Count": 558,
+      "Percentage": 0.18428370443271663
+    },
+    {
+      "HGW": "HG8122",
+      "SubDevice": "HG180Ev2",
+      "Type": "2-box",
+      "Count": 557,
+      "Percentage": 0.18395344689789098
+    },
+    {
+      "HGW": "ST-244F",
+      "SubDevice": "WR6221-T",
+      "Type": "2-box",
+      "Count": 523,
+      "Percentage": 0.17272469071381863
+    },
+    {
+      "HGW": "F612C",
+      "SubDevice": "ZXHN H3601P V9",
+      "Type": "2-box",
+      "Count": 512,
+      "Percentage": 0.1690918578307364
+    },
+    {
+      "HGW": "HG8247H",
+      "SubDevice": "HG180Ev2",
+      "Type": "2-box",
+      "Count": 489,
+      "Percentage": 0.16149593452974628
+    },
+    {
+      "HGW": "HG8247H",
+      "SubDevice": "ZXHN H3601P V9",
+      "Type": "2-box",
+      "Count": 474,
+      "Percentage": 0.15654207150736144
+    },
+    {
+      "HGW": "F612C",
+      "SubDevice": "HG180Ev2",
+      "Type": "2-box",
+      "Count": 471,
+      "Percentage": 0.15555129890288447
+    },
+    {
+      "HGW": "H662GR",
+      "SubDevice": "HG180Ev2",
+      "Type": "2-box",
+      "Count": 463,
+      "Percentage": 0.15290923862427921
+    },
+    {
+      "HGW": "HT803G-UA",
+      "SubDevice": "ST-R4D",
+      "Type": "2-box",
+      "Count": 459,
+      "Percentage": 0.15158820848497656
+    },
+    {
+      "HGW": "F688",
+      "SubDevice": "WR6221-T",
+      "Type": "2-box",
+      "Count": 448,
+      "Percentage": 0.14795537560189437
+    },
+    {
+      "HGW": "AN5506-04-CG",
+      "SubDevice": "ST-R4D",
+      "Type": "2-box",
+      "Count": 444,
+      "Percentage": 0.14663434546259174
+    },
+    {
+      "HGW": "T6825G",
+      "SubDevice": "A6268",
+      "Type": "routing_ont_mesh",
+      "Count": 442,
+      "Percentage": 0.1459738303929404
+    },
+    {
+      "HGW": "HG8247W5-6T",
+      "SubDevice": "WR6221-T",
+      "Type": "2-box",
+      "Count": 415,
+      "Percentage": 0.13705687695264768
+    },
+    {
+      "HGW": "T626Pro",
+      "SubDevice": "WR6221-T",
+      "Type": "2-box",
+      "Count": 398,
+      "Percentage": 0.1314424988606115
+    },
+    {
+      "HGW": "T625Pro",
+      "SubDevice": "T3ATv2",
+      "Type": "2-box",
+      "Count": 393,
+      "Percentage": 0.1297912111864832
+    },
+    {
+      "HGW": "T626ProV2",
+      "SubDevice": "T3ATv2",
+      "Type": "2-box",
+      "Count": 380,
+      "Percentage": 0.12549786323374967
+    },
+    {
+      "HGW": "T626Pro",
+      "SubDevice": "T626Pro",
+      "Type": "routing_ont_mesh",
+      "Count": 372,
+      "Percentage": 0.12285580295514442
+    },
+    {
+      "HGW": "T626ProV2",
+      "SubDevice": "RE1200R4GC-V3",
+      "Type": "2-box",
+      "Count": 361,
+      "Percentage": 0.11922297007206219
+    },
+    {
+      "HGW": "F6620",
+      "SubDevice": "ZXHN H3601P V9",
+      "Type": "routing_ont_mesh",
+      "Count": 350,
+      "Percentage": 0.11559013718897998
+    },
+    {
+      "HGW": "HG8122",
+      "SubDevice": "ZXHN H3601P V9",
+      "Type": "2-box",
+      "Count": 350,
+      "Percentage": 0.11559013718897998
+    },
+    {
+      "HGW": "T623L",
+      "SubDevice": "WR6221-T",
+      "Type": "2-box",
+      "Count": 344,
+      "Percentage": 0.11360859198002603
+    },
+    {
+      "HGW": "T625Pro",
+      "SubDevice": "RE1200R4GC-V3",
+      "Type": "2-box",
+      "Count": 342,
+      "Percentage": 0.1129480769103747
+    },
+    {
+      "HGW": "AN5506-04-CG",
+      "SubDevice": "ZXHN H3601P V9",
+      "Type": "2-box",
+      "Count": 329,
+      "Percentage": 0.10865472895764117
+    },
+    {
+      "HGW": "HT803G-UA",
+      "SubDevice": "RE1200R4GC-V3",
+      "Type": "2-box",
+      "Count": 327,
+      "Percentage": 0.10799421388798987
+    },
+    {
+      "HGW": "F668",
+      "SubDevice": "ST-R4D",
+      "Type": "2-box",
+      "Count": 326,
+      "Percentage": 0.1076639563531642
+    },
+    {
+      "HGW": "ST-244F",
+      "SubDevice": "T3ATv2",
+      "Type": "2-box",
+      "Count": 318,
+      "Percentage": 0.10502189607455893
+    },
+    {
+      "HGW": "F688",
+      "SubDevice": "RE1200R4GC-V3",
+      "Type": "2-box",
+      "Count": 312,
+      "Percentage": 0.10304035086560501
+    },
+    {
+      "HGW": "T628",
+      "SubDevice": "WR6221-T",
+      "Type": "2-box",
+      "Count": 310,
+      "Percentage": 0.10237983579595368
+    },
+    {
+      "HGW": "GN2000-02GS-1VT",
+      "SubDevice": "HG180Ev2",
+      "Type": "2-box",
+      "Count": 308,
+      "Percentage": 0.10171932072630238
+    },
+    {
+      "HGW": "H662GR",
+      "SubDevice": "ZXHN H3601P V9",
+      "Type": "2-box",
+      "Count": 286,
+      "Percentage": 0.09445365496013791
+    },
+    {
+      "HGW": "HT803G-UA",
+      "SubDevice": "HG180Ev2",
+      "Type": "2-box",
+      "Count": 285,
+      "Percentage": 0.09412339742531226
+    },
+    {
+      "HGW": "HG8247W5-6T",
+      "SubDevice": "RE1200R4GC-V3",
+      "Type": "2-box",
+      "Count": 281,
+      "Percentage": 0.09280236728600963
+    },
+    {
+      "HGW": "T623L",
+      "SubDevice": "RE1200R4GC-V3",
+      "Type": "2-box",
+      "Count": 280,
+      "Percentage": 0.09247210975118397
+    },
+    {
+      "HGW": "F688",
+      "SubDevice": "T3ATv2",
+      "Type": "2-box",
+      "Count": 274,
+      "Percentage": 0.09049056454223003
+    },
+    {
+      "HGW": "T626Pro",
+      "SubDevice": "A626M",
+      "Type": "routing_ont_mesh",
+      "Count": 270,
+      "Percentage": 0.0891695344029274
+    },
+    {
+      "HGW": "T623",
+      "SubDevice": "WR6221-T",
+      "Type": "2-box",
+      "Count": 269,
+      "Percentage": 0.08883927686810175
+    },
+    {
+      "HGW": "T626Pro",
+      "SubDevice": "T3ATv2",
+      "Type": "2-box",
+      "Count": 250,
+      "Percentage": 0.08256438370641427
+    },
+    {
+      "HGW": "T623L",
+      "SubDevice": "T3ATv2",
+      "Type": "2-box",
+      "Count": 238,
+      "Percentage": 0.07860129328850637
+    },
+    {
+      "HGW": "HG8247W5-6T",
+      "SubDevice": "T3ATv2",
+      "Type": "2-box",
+      "Count": 238,
+      "Percentage": 0.07860129328850637
+    },
+    {
+      "HGW": "T627Pro",
+      "SubDevice": "T626ProV2",
+      "Type": "routing_ont_mesh",
+      "Count": 223,
+      "Percentage": 0.07364743026612151
+    },
+    {
+      "HGW": "T626Pro",
+      "SubDevice": "RE1200R4GC-V3",
+      "Type": "2-box",
+      "Count": 220,
+      "Percentage": 0.07265665766164454
+    },
+    {
+      "HGW": "T626ProV2",
+      "SubDevice": "T627Pro",
+      "Type": "routing_ont_mesh",
+      "Count": 210,
+      "Percentage": 0.06935408231338798
+    },
+    {
+      "HGW": "F612C",
+      "SubDevice": "SR120-A",
+      "Type": "2-box",
+      "Count": 207,
+      "Percentage": 0.06836330970891101
+    },
+    {
+      "HGW": "T623",
+      "SubDevice": "T3ATv2",
+      "Type": "2-box",
+      "Count": 200,
+      "Percentage": 0.06605150696513142
+    },
+    {
+      "HGW": "GN542VF",
+      "SubDevice": "ST-R4D",
+      "Type": "2-box",
+      "Count": 196,
+      "Percentage": 0.06473047682582879
+    },
+    {
+      "HGW": "GN2000-04GS-2VT",
+      "SubDevice": "T3ATv2",
+      "Type": "2-box",
+      "Count": 195,
+      "Percentage": 0.06440021929100312
+    },
+    {
+      "HGW": "T623",
+      "SubDevice": "RE1200R4GC-V3",
+      "Type": "2-box",
+      "Count": 194,
+      "Percentage": 0.06406996175617748
+    },
+    {
+      "HGW": "HG8247H",
+      "SubDevice": "SR120-A",
+      "Type": "2-box",
+      "Count": 189,
+      "Percentage": 0.06241867408204919
+    }
+  ],
+  "fttr_leads_profile": [
+    {
+      "HGW": "T626ProV2",
+      "HouseholdCount": 3616,
+      "Share": 33.247517469657964
+    },
+    {
+      "HGW": "T626Pro",
+      "HouseholdCount": 1122,
+      "Share": 10.316292754689224
+    },
+    {
+      "HGW": "T625Pro",
+      "HouseholdCount": 1011,
+      "Share": 9.295696947407135
+    },
+    {
+      "HGW": "GN542VF",
+      "HouseholdCount": 650,
+      "Share": 5.976461934534756
+    },
+    {
+      "HGW": "T628",
+      "HouseholdCount": 570,
+      "Share": 5.2408973887458625
+    },
+    {
+      "HGW": "T623L",
+      "HouseholdCount": 497,
+      "Share": 4.569694740713497
+    },
+    {
+      "HGW": "T625LM",
+      "HouseholdCount": 474,
+      "Share": 4.358219933799191
+    },
+    {
+      "HGW": "T623",
+      "HouseholdCount": 398,
+      "Share": 3.6594336152997426
+    },
+    {
+      "HGW": "F612C",
+      "HouseholdCount": 378,
+      "Share": 3.475542478852519
+    },
+    {
+      "HGW": "HG8247H",
+      "HouseholdCount": 356,
+      "Share": 3.273262228760574
+    },
+    {
+      "HGW": "HG8122",
+      "HouseholdCount": 269,
+      "Share": 2.473335785215153
+    },
+    {
+      "HGW": "AN5506-04-CG",
+      "HouseholdCount": 252,
+      "Share": 2.3170283192350127
+    },
+    {
+      "HGW": "H662GR",
+      "HouseholdCount": 222,
+      "Share": 2.0411916145641777
+    },
+    {
+      "HGW": "F6600P",
+      "HouseholdCount": 218,
+      "Share": 2.0044133872747336
+    },
+    {
+      "HGW": "T628L",
+      "HouseholdCount": 215,
+      "Share": 1.9768297168076499
+    },
+    {
+      "HGW": "T627Pro",
+      "HouseholdCount": 114,
+      "Share": 1.0481794777491724
+    },
+    {
+      "HGW": "GN2000-02GS-1VT",
+      "HouseholdCount": 92,
+      "Share": 0.8458992276572269
+    },
+    {
+      "HGW": "ST-244F",
+      "HouseholdCount": 86,
+      "Share": 0.7907318867230599
+    },
+    {
+      "HGW": "T6825G",
+      "HouseholdCount": 83,
+      "Share": 0.7631482162559764
+    },
+    {
+      "HGW": "F668",
+      "HouseholdCount": 73,
+      "Share": 0.6712026480323648
+    },
+    {
+      "HGW": "F688",
+      "HouseholdCount": 50,
+      "Share": 0.4597278411180581
+    },
+    {
+      "HGW": "ST-244FV2",
+      "HouseholdCount": 28,
+      "Share": 0.25744759102611253
+    },
+    {
+      "HGW": "HG8247W5-6T",
+      "HouseholdCount": 27,
+      "Share": 0.2482530342037514
+    },
+    {
+      "HGW": "HT803G-UA",
+      "HouseholdCount": 16,
+      "Share": 0.1471129091577786
+    },
+    {
+      "HGW": "HG6249A",
+      "HouseholdCount": 12,
+      "Share": 0.11033468186833395
+    },
+    {
+      "HGW": "F6600R",
+      "HouseholdCount": 9,
+      "Share": 0.08275101140125046
+    },
+    {
+      "HGW": "F6620",
+      "HouseholdCount": 9,
+      "Share": 0.08275101140125046
+    },
+    {
+      "HGW": "T7281",
+      "HouseholdCount": 7,
+      "Share": 0.06436189775652813
+    },
+    {
+      "HGW": "HG6145F4",
+      "HouseholdCount": 7,
+      "Share": 0.06436189775652813
+    },
+    {
+      "HGW": "T723",
+      "HouseholdCount": 5,
+      "Share": 0.04597278411180581
+    },
+    {
+      "HGW": "GN2000-04GS-2VT",
+      "HouseholdCount": 5,
+      "Share": 0.04597278411180581
+    },
+    {
+      "HGW": "HG8247W5",
+      "HouseholdCount": 2,
+      "Share": 0.018389113644722326
+    },
+    {
+      "HGW": "V261a-20",
+      "HouseholdCount": 1,
+      "Share": 0.009194556822361163
+    },
+    {
+      "HGW": "T3ATv2",
+      "HouseholdCount": 1,
+      "Share": 0.009194556822361163
+    },
+    {
+      "HGW": "A625M",
+      "HouseholdCount": 1,
+      "Share": 0.009194556822361163
+    }
+  ],
+  "generated_at": "090926"
+};
+        
+        let currentTab = 'pairings';
+        let currentRoleSubTab = 'HGW';
+        let sortDirections = {
+            pairings: [1, 1, 1, -1, -1],
+            roles: [1, 1, -1, -1],
+            fttr: [1, -1, -1]
+        };
+        
+        let filteredPairings = [];
+        let filteredRoles = [];
+        let filteredFttr = [];
+
+
+        window.onload = function() {
+            initDashboard();
+        };
+
+        function initDashboard() {
+            document.getElementById('as-of-date-badge').innerText = dashboardData.generated_at;
+            
+            // Populate KPIs
+            document.getElementById('kpi-subscribers').innerText = Number(dashboardData.total_subscribers).toLocaleString();
+            document.getElementById('kpi-multi-homes').innerText = Number(dashboardData.household_devices_dist['2_devices'] + dashboardData.household_devices_dist['3_plus_devices']).toLocaleString();
+            
+            const multiShare = ((dashboardData.household_devices_dist['2_devices'] + dashboardData.household_devices_dist['3_plus_devices']) / dashboardData.total_subscribers) * 100;
+            document.getElementById('kpi-multi-share').innerText = `สัดส่วน: ${multiShare.toFixed(2)}% ของครัวเรือนรวม`;
+            
+            document.getElementById('kpi-fttr-leads').innerText = Number(dashboardData.household_devices_dist['3_plus_devices']).toLocaleString();
+            const fttrShare = (dashboardData.household_devices_dist['3_plus_devices'] / dashboardData.total_subscribers) * 100;
+            document.getElementById('kpi-fttr-share').innerText = `สัดส่วน: ${fttrShare.toFixed(2)}% ของครัวเรือนรวม`;
+            
+            if (document.getElementById('fttr-total-households')) {
+                document.getElementById('fttr-total-households').innerText = Number(dashboardData.household_devices_dist['3_plus_devices']).toLocaleString();
+            }
+
+            document.getElementById('kpi-mesh').innerText = Number(dashboardData.device_roles.Mesh).toLocaleString();
+            document.getElementById('kpi-mesh-share').innerText = `สัดส่วน: ${(dashboardData.device_roles.Mesh / dashboardData.total_devices * 100).toFixed(2)}% ของเครื่องทั้งหมด`;
+            
+            document.getElementById('kpi-ap').innerText = Number(dashboardData.device_roles.AP).toLocaleString();
+            document.getElementById('kpi-ap-share').innerText = `สัดส่วน: ${(dashboardData.device_roles.AP / dashboardData.total_devices * 100).toFixed(2)}% ของเครื่องทั้งหมด`;
+
+            // Prepare filtered arrays
+            filteredPairings = [...dashboardData.top_pairings];
+            filteredFttr = [...dashboardData.fttr_leads_profile];
+            updateFilteredRoles();
+
+            // Populate Tables
+            renderPairingsTable();
+            renderRolesTable();
+            renderFttrTable();
+
+            // Render Charts
+            renderCharts();
+        }
+
+        function updateFilteredRoles() {
+            if (currentRoleSubTab === 'HGW') {
+                filteredRoles = [...dashboardData.top_hgw_models];
+            } else if (currentRoleSubTab === 'Mesh') {
+                filteredRoles = [...dashboardData.top_mesh_models];
+            } else {
+                filteredRoles = [...dashboardData.top_ap_models];
+            }
+        }
+
+        // Tab Switching
+        function switchTab(tabId) {
+            currentTab = tabId;
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.style.display = 'none');
+            
+            // Highlight current button (parent tab-btn only)
+            const index = ['pairings', 'roles', 'fttr'].indexOf(tabId);
+            document.querySelectorAll('.tabs-list .tab-btn')[index].classList.add('active');
+            document.getElementById(`tab-${tabId}`).style.display = 'block';
+
+            // Reset search bar on switch
+            document.getElementById('tableSearch').value = '';
+            onSearchInput();
+        }
+
+        function switchRoleSubTab(subTabId) {
+            currentRoleSubTab = subTabId;
+            document.getElementById('subtab-hgw-btn').classList.remove('active');
+            document.getElementById('subtab-mesh-btn').classList.remove('active');
+            document.getElementById('subtab-ap-btn').classList.remove('active');
+            
+            document.getElementById(`subtab-${subTabId.toLowerCase()}-btn`).classList.add('active');
+            
+            document.getElementById('tableSearch').value = '';
+            updateFilteredRoles();
+            renderRolesTable();
+        }
+
+        // Render Tables
+        function renderPairingsTable() {
+            const tbody = document.getElementById('pairings-table-body');
+            tbody.innerHTML = '';
+            
+            if (filteredPairings.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="empty-row">ไม่พบข้อมูลการจับคู่ที่ค้นหา</td></tr>';
+                return;
+            }
+
+            filteredPairings.forEach(item => {
+                let typeBadge = item.Type;
+                if (item.Type === 'routing_ont_mesh') typeBadge = 'ONT+Mesh';
+                if (item.Type === '2-box') typeBadge = 'ONT(Type1,5)+AP';
+                if (item.Type === 'as_mesh') typeBadge = 'ONT+ AS_Mesh';
+                
+                tbody.innerHTML += `
+                    <tr>
+                        <td style="font-weight: 600;">${item.HGW}</td>
+                        <td style="color: var(--text-secondary);">${item.SubDevice}</td>
+                        <td><span class="table-badge ${item.Type.replace('-','')}">${typeBadge}</span></td>
+                        <td style="font-weight: 500; text-align: right; padding-right: 30px;">${Number(item.Count).toLocaleString()}</td>
+                        <td style="color: var(--text-secondary); text-align: right; padding-right: 30px;">${Number(item.Percentage).toFixed(3)}%</td>
+                    </tr>
+                `;
+            });
+        }
+
+        function renderRolesTable() {
+            const tbody = document.getElementById('roles-table-body');
+            tbody.innerHTML = '';
+            
+            if (filteredRoles.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="empty-row">ไม่พบข้อมูลโมเดลที่ค้นหา</td></tr>';
+                return;
+            }
+
+            filteredRoles.forEach(item => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td style="font-weight: 600;">${item.ProductClass}</td>
+                        <td><span class="table-badge ${item.Type.toLowerCase()}">${item.Type}</span></td>
+                        <td style="font-weight: 500; text-align: right; padding-right: 30px;">${Number(item.TotalDevices).toLocaleString()}</td>
+                        <td style="color: var(--text-secondary); text-align: right; padding-right: 30px;">${Number(item.Share).toFixed(2)}%</td>
+                    </tr>
+                `;
+            });
+        }
+
+        function renderFttrTable() {
+            const tbody = document.getElementById('fttr-table-body');
+            tbody.innerHTML = '';
+            
+            if (filteredFttr.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="empty-row">ไม่พบข้อมูลเกตเวย์ที่ค้นหา</td></tr>';
+                return;
+            }
+
+            filteredFttr.forEach(item => {
+                let potBadge = 'Medium';
+                if (item.HouseholdCount >= 1000) potBadge = 'Extreme (บ้านกลุ่มเป้าหมายใหญ่)';
+                else if (item.HouseholdCount >= 100) potBadge = 'High';
+                
+                tbody.innerHTML += `
+                    <tr>
+                        <td style="font-weight: 600;">${item.HGW}</td>
+                        <td style="font-weight: 500; text-align: right; padding-right: 60px;">${Number(item.HouseholdCount).toLocaleString()}</td>
+                        <td style="color: var(--text-secondary); text-align: right; padding-right: 60px;">${Number(item.Share).toFixed(2)}%</td>
+                        <td><span class="table-badge potential">${potBadge}</span></td>
+                    </tr>
+                `;
+            });
+        }
+
+        // Search Control
+        function onSearchInput() {
+            const q = document.getElementById('tableSearch').value.toLowerCase().trim();
+            
+            if (currentTab === 'pairings') {
+                if (!q) {
+                    filteredPairings = [...dashboardData.top_pairings];
+                } else {
+                    filteredPairings = dashboardData.top_pairings.filter(item => 
+                        item.HGW.toLowerCase().includes(q) || 
+                        item.SubDevice.toLowerCase().includes(q) || 
+                        item.Type.toLowerCase().includes(q)
+                    );
+                }
+                renderPairingsTable();
+            } else if (currentTab === 'roles') {
+                let fullRoleList = [];
+                if (currentRoleSubTab === 'HGW') fullRoleList = dashboardData.top_hgw_models;
+                else if (currentRoleSubTab === 'Mesh') fullRoleList = dashboardData.top_mesh_models;
+                else fullRoleList = dashboardData.top_ap_models;
+                
+                if (!q) {
+                    filteredRoles = [...fullRoleList];
+                } else {
+                    filteredRoles = fullRoleList.filter(item => 
+                        item.ProductClass.toLowerCase().includes(q)
+                    );
+                }
+                renderRolesTable();
+            } else {
+                if (!q) {
+                    filteredFttr = [...dashboardData.fttr_leads_profile];
+                } else {
+                    filteredFttr = dashboardData.fttr_leads_profile.filter(item => 
+                        item.HGW.toLowerCase().includes(q)
+                    );
+                }
+                renderFttrTable();
+            }
+        }
+
+        // Sorting
+        function sortTabTable(tabName, colIdx) {
+            const dir = sortDirections[tabName][colIdx];
+            sortDirections[tabName][colIdx] = -dir; // toggle next
+
+            if (tabName === 'pairings') {
+                filteredPairings.sort((a, b) => {
+                    let valA, valB;
+                    if (colIdx === 0) { valA = a.HGW; valB = b.HGW; }
+                    else if (colIdx === 1) { valA = a.SubDevice; valB = b.SubDevice; }
+                    else if (colIdx === 2) { valA = a.Type; valB = b.Type; }
+                    else if (colIdx === 3) { valA = a.Count; valB = b.Count; }
+                    else { valA = a.Percentage; valB = b.Percentage; }
+
+                    if (typeof valA === 'string') {
+                        return valA.localeCompare(valB) * dir;
+                    }
+                    return (valA - valB) * dir;
+                });
+                renderPairingsTable();
+            } else if (tabName === 'roles') {
+                filteredRoles.sort((a, b) => {
+                    let valA, valB;
+                    if (colIdx === 0) { valA = a.ProductClass; valB = b.ProductClass; }
+                    else if (colIdx === 1) { valA = a.Type; valB = b.Type; }
+                    else if (colIdx === 2) { valA = a.TotalDevices; valB = b.TotalDevices; }
+                    else { valA = a.Share; valB = b.Share; }
+
+                    if (typeof valA === 'string') {
+                        return valA.localeCompare(valB) * dir;
+                    }
+                    return (valA - valB) * dir;
+                });
+                renderRolesTable();
+            } else if (tabName === 'fttr') {
+                filteredFttr.sort((a, b) => {
+                    let valA, valB;
+                    if (colIdx === 0) { valA = a.HGW; valB = b.HGW; }
+                    else if (colIdx === 1) { valA = a.HouseholdCount; valB = b.HouseholdCount; }
+                    else { valA = a.Share; valB = b.Share; }
+
+                    if (typeof valA === 'string') {
+                        return valA.localeCompare(valB) * dir;
+                    }
+                    return (valA - valB) * dir;
+                });
+                renderFttrTable();
+            }
+        }
+
+        // Render charts
+        function renderCharts() {
+            const ctxPairing = document.getElementById('pairingChart').getContext('2d');
+            const ctxDevCount = document.getElementById('devCountChart').getContext('2d');
+
+            // Pairing Chart
+            const dist = dashboardData.pairing_types_dist;
+            const pairingItems = [
+                { label: 'ONT+Mesh', value: dist.routing_ont_mesh, bg: '#6366f1', border: 'rgba(99, 102, 241, 0.4)' },
+                { label: 'ONT(Type1,5)+AP', value: dist['2-box'], bg: '#8b5cf6', border: 'rgba(139, 92, 246, 0.4)' },
+                { label: 'ONT+ AS_Mesh', value: dist.as_mesh, bg: '#06b6d4', border: 'rgba(6, 182, 212, 0.4)' },
+                { label: 'Other Pairing', value: dist.other_pairing, bg: '#f43f5e', border: 'rgba(244, 63, 94, 0.4)' }
+            ];
+            pairingItems.sort((a, b) => b.value - a.value);
+
+            new Chart(ctxPairing, {
+                type: 'bar',
+                data: {
+                    labels: pairingItems.map(item => item.label),
+                    datasets: [{
+                        label: 'จำนวนชุดติดตั้ง (คู่)',
+                        data: pairingItems.map(item => item.value),
+                        backgroundColor: pairingItems.map(item => item.bg),
+                        borderColor: pairingItems.map(item => item.border),
+                        borderWidth: 1,
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const val = context.raw;
+                                    const total = dist.routing_ont_mesh + dist['2-box'] + dist.as_mesh + dist.other_pairing;
+                                    const pct = (val / total) * 100;
+                                    return ` ${val.toLocaleString()} คู่อุปกรณ์ (${pct.toFixed(2)}%)`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: 'rgba(255,255,255,0.04)' },
+                            ticks: { color: '#9ca3af' }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#9ca3af', font: { family: 'Outfit' } }
+                        }
+                    }
+                }
+            });
+
+            // Device count distribution per subscriber
+            const dd = dashboardData.household_devices_dist;
+            new Chart(ctxDevCount, {
+                type: 'pie',
+                data: {
+                    labels: ['1 Device', '2 Devices', '3+ Devices (FTTR Candidates)'],
+                    datasets: [{
+                        data: [dd['1_device'], dd['2_devices'], dd['3_plus_devices']],
+                        backgroundColor: ['#10b981', '#6366f1', '#f59e0b'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                color: '#9ca3af',
+                                font: { family: 'Outfit', size: 12 },
+                                boxWidth: 12
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const val = context.raw;
+                                    const total = dd['1_device'] + dd['2_devices'] + dd['3_plus_devices'];
+                                    const pct = (val / total) * 100;
+                                    return ` ${val.toLocaleString()} ครัวเรือน (${pct.toFixed(2)}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Excel Export
+        function exportDataExcel() {
+            let exportHeaders = [];
+            let exportRows = [];
+            let filename = '';
+
+            if (currentTab === 'pairings') {
+                exportHeaders = ["HGW Model (กล่องหลัก)", "Secondary Model (กล่องเสริม)", "Pairing Type", "Count (จำนวน)", "Percentage (%)"];
+                exportRows = filteredPairings.map(item => [item.HGW, item.SubDevice, item.Type, item.Count, item.Percentage]);
+                filename = 'CPE_Pairing_Models_Breakdown';
+            } else if (currentTab === 'roles') {
+                exportHeaders = ["Product Class", "Network Role", "Total Devices", "Share of Role (%)"];
+                exportRows = filteredRoles.map(item => [item.ProductClass, item.Type, item.TotalDevices, item.Share]);
+                filename = `CPE_Device_Role_${currentRoleSubTab}`;
+            } else {
+                exportHeaders = ["HGW Model (กล่องหลัก)", "Candidate Households (จำนวนบ้าน)", "Share of Leads Pool (%)"];
+                exportRows = filteredFttr.map(item => [item.HGW, item.HouseholdCount, item.Share]);
+                filename = 'CPE_FTTR_Lead_Opportunities';
+            }
+
+            const worksheetData = [exportHeaders, ...exportRows];
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet(worksheetData);
+            XLSX.utils.book_append_sheet(wb, ws, "Data");
+            
+            const dateStr = new Date().toISOString().slice(0, 10);
+            XLSX.writeFile(wb, `${filename}_${dateStr}.xlsx`);
+        }
+    </script>
+</body>
+</html>

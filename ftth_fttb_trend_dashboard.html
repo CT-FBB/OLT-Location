@@ -1,0 +1,1839 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FTTH & FTTB Active Subscriber Trend | BCPE Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --bg-base: #030712;
+            --bg-surface: #0b1329;
+            --bg-card: rgba(17, 24, 39, 0.75);
+            --bg-card-hover: rgba(31, 41, 55, 0.85);
+            --border: rgba(255, 255, 255, 0.08);
+            --border-highlight: rgba(6, 182, 212, 0.4);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --cyan: #06b6d4;
+            --cyan-glow: rgba(6, 182, 212, 0.3);
+            --emerald: #10b981;
+            --rose: #f43f5e;
+            --indigo: #6366f1;
+            --amber: #f59e0b;
+            --purple: #a855f7;
+            --font-main: 'Inter', sans-serif;
+            --font-display: 'Outfit', sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(6, 182, 212, 0.08) 0px, transparent 50%),
+                radial-gradient(at 100% 0%, rgba(99, 102, 241, 0.08) 0px, transparent 50%),
+                radial-gradient(at 50% 100%, rgba(16, 185, 129, 0.05) 0px, transparent 50%);
+            background-attachment: fixed;
+            color: var(--text-main);
+            font-family: var(--font-main);
+            min-height: 100vh;
+            margin: 0 !important;
+            padding: 80px 2rem 60px 2rem !important;
+            overflow-x: hidden !important;
+        }
+
+        .container {
+            max-width: 100% !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        /* ── Top Navigation Bar CSS ── */
+        .topnav {
+            height: 60px !important;
+            background: rgba(13, 18, 34, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            display: grid !important;
+            grid-template-columns: auto 1fr auto !important;
+            align-items: center;
+            padding: 0 2rem;
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            z-index: 9999 !important;
+        }
+        .topnav-logo {
+            font-family: var(--font-display);
+            font-size: 1.25rem;
+            color: #f8fafc;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            justify-self: start;
+        }
+        .topnav-logo span {
+            background: linear-gradient(135deg, #06b6d4, #6366f1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .topnav-links {
+            display: flex;
+            gap: 8px;
+            height: 100%;
+            align-items: center;
+            justify-self: center;
+        }
+        .topnav-right {
+            justify-self: end;
+            display: flex;
+            align-items: center;
+        }
+        .topnav-links a {
+            display: flex;
+            align-items: center;
+            height: 40px;
+            padding: 0 16px;
+            color: #94a3b8;
+            text-decoration: none;
+            font-size: 0.95rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            border-radius: 8px;
+            box-sizing: border-box;
+        }
+        .topnav-links a:hover {
+            color: #f8fafc;
+            background: rgba(255,255,255,0.03);
+        }
+        .topnav-links a.active {
+            color: #f8fafc;
+            background: rgba(6, 182, 212, 0.15);
+            font-weight: 600;
+            border: 1px solid rgba(6, 182, 212, 0.2);
+        }
+        .dropdown {
+            position: relative;
+            display: flex;
+            align-items: center;
+            height: 100%;
+        }
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            background-color: #1e293b;
+            min-width: 160px;
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.5);
+            z-index: 10000;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.1);
+            top: 50px;
+            left: 0;
+            overflow: hidden;
+        }
+        .dropdown-content a {
+            color: #94a3b8;
+            padding: 12px 16px;
+            text-decoration: none;
+            display: block;
+            height: auto;
+            border-radius: 0;
+            border: none;
+            font-size: 0.95rem;
+            transition: all 0.2s;
+        }
+        .dropdown-content a:hover {
+            background-color: rgba(255,255,255,0.05);
+            color: #f8fafc;
+        }
+        .dropdown:hover .dropdown-content {
+            display: block;
+        }
+
+        /* ── Header ── */
+        .header {
+            background: linear-gradient(135deg, rgba(6, 182, 212, 0.12) 0%, rgba(17, 24, 39, 0.6) 100%);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 28px 36px;
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            box-shadow: 0 8px 32px -8px rgba(0,0,0,0.5);
+        }
+
+        .header-title h1 {
+            font-family: var(--font-display);
+            font-size: 2.1rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #38bdf8, #818cf8, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.02em;
+        }
+
+        .header-title .sub {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            margin-top: 6px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .badge-container {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            padding: 6px 14px;
+            border-radius: 30px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            font-family: var(--font-display);
+            border: 1px solid rgba(255,255,255,0.08);
+            background: rgba(255,255,255,0.04);
+            color: var(--text-main);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .badge.cyan { background: rgba(6,182,212,0.15); border-color: rgba(6,182,212,0.35); color: #22d3ee; }
+        .badge.emerald { background: rgba(16,185,129,0.15); border-color: rgba(16,185,129,0.35); color: #34d399; }
+        .badge.purple { background: rgba(168,85,247,0.15); border-color: rgba(168,85,247,0.35); color: #c084fc; }
+
+        /* ── KPI Grid ── */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 18px;
+            margin-bottom: 24px;
+        }
+
+        .kpi-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 22px 24px;
+            backdrop-filter: blur(12px);
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.2s ease, border-color 0.2s ease;
+        }
+
+        .kpi-card:hover {
+            transform: translateY(-3px);
+            border-color: var(--border-highlight);
+        }
+
+        .kpi-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--card-accent, #06b6d4), transparent);
+        }
+
+        .kpi-title {
+            color: var(--text-muted);
+            font-size: 0.84rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .kpi-val {
+            font-family: var(--font-display);
+            font-size: 2.2rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            line-height: 1.1;
+        }
+
+        .kpi-sub {
+            margin-top: 10px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .pill-up {
+            color: #34d399;
+            background: rgba(16,185,129,0.12);
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 0.78rem;
+            font-weight: 700;
+        }
+
+        .pill-down {
+            color: #fb7185;
+            background: rgba(244,63,94,0.12);
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 0.78rem;
+            font-weight: 700;
+        }
+
+        /* ── Regional Cards Grid (5 Regions) ── */
+        .region-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .region-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 18px 20px;
+            backdrop-filter: blur(12px);
+            position: relative;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .region-card:hover, .region-card.selected {
+            border-color: var(--card-color, #06b6d4);
+            background: rgba(31, 41, 55, 0.9);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px -4px rgba(0,0,0,0.4);
+        }
+
+        .region-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .region-name {
+            font-family: var(--font-display);
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: var(--card-color, #f8fafc);
+        }
+
+        .region-share {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            background: rgba(255,255,255,0.06);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .region-val {
+            font-family: var(--font-display);
+            font-size: 1.6rem;
+            font-weight: 800;
+            margin-bottom: 6px;
+        }
+
+        .region-spark-container {
+            height: 45px;
+            width: 100%;
+            margin-top: 8px;
+        }
+
+        /* ── Chart Panels ── */
+        .chart-grid-2 {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        .chart-grid-equal {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        @media (max-width: 1024px) {
+            .chart-grid-2, .chart-grid-equal {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .panel {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 24px;
+            backdrop-filter: blur(12px);
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 18px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .panel-title {
+            font-family: var(--font-display);
+            font-size: 1.15rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .panel-actions {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .btn-toggle {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            padding: 5px 12px;
+            border-radius: 8px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .btn-toggle:hover, .btn-toggle.active {
+            background: rgba(6,182,212,0.18);
+            border-color: rgba(6,182,212,0.4);
+            color: #22d3ee;
+        }
+
+        .chart-box {
+            position: relative;
+            height: 320px;
+            width: 100%;
+        }
+
+        .chart-box-large {
+            position: relative;
+            height: 380px;
+            width: 100%;
+        }
+
+        /* ── Table & Actions ── */
+        .action-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .btn-action {
+            background: linear-gradient(135deg, #06b6d4, #3b82f6);
+            border: none;
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: opacity 0.2s, transform 0.15s;
+        }
+
+        .btn-action:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        .search-box {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 8px 14px;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            outline: none;
+            width: 240px;
+        }
+
+        .search-box:focus {
+            border-color: var(--cyan);
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+            text-align: left;
+        }
+
+        th {
+            background: rgba(15, 23, 42, 0.8);
+            color: var(--text-muted);
+            font-weight: 600;
+            padding: 12px 16px;
+            white-space: nowrap;
+            border-bottom: 1px solid var(--border);
+        }
+
+        td {
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            white-space: nowrap;
+            color: var(--text-main);
+        }
+
+        tr:hover td {
+            background: rgba(255,255,255,0.02);
+        }
+
+        .nav-back {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--cyan);
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 16px;
+            transition: color 0.15s;
+        }
+        .nav-back:hover {
+            color: #38bdf8;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- TOP NAVIGATION BAR -->
+    <nav class="topnav">
+        <div class="topnav-logo">📦 <span>BCPE Monitor</span></div>
+        <div class="topnav-links">
+            <a href="index.html">Device (ACS)</a>
+            <a href="onu_model_dashboard.html" id="nav-onumodel">ONU (QRUN)</a>
+            <a href="cpe_pairing_dashboard.html" id="nav-cpepairing">CPE Pairing (ACS)</a>
+            <a href="ftth_fttb_trend_dashboard.html" id="nav-mbtrend" class="active">FTTH/FTTB Trend (MB)</a>
+        </div>
+        <div class="topnav-right"></div>
+    </nav>
+
+<div class="container">
+
+    <!-- Header -->
+    <div class="header">
+        <div class="header-title">
+            <h1>FTTH & FTTB Active Subscriber Trend</h1>
+            <div class="sub">
+                <span>ฐานข้อมูล MB (ftth_with_speed & fttb_with_speed)</span>
+                <span>•</span>
+                <span>รายสัปดาห์ ตั้งแต่ปลายปี 2025 ถึงปัจจุบัน</span>
+            </div>
+        </div>
+        <div class="badge-container">
+            <span class="badge cyan">📅 ข้อมูลล่าสุด: <span id="hdr-latest">-</span></span>
+            <span class="badge purple">🚩 ฐานข้อมูล: <span id="hdr-baseline">-</span></span>
+            <span class="badge emerald">📈 การเติบโตสุทธิ: <span id="hdr-growth">-</span></span>
+        </div>
+    </div>
+
+    <!-- Main KPI Cards -->
+    <div class="kpi-grid">
+        <div class="kpi-card" style="--card-accent: #06b6d4;">
+            <div class="kpi-title">
+                <span>Active Subscribers รวม</span>
+                <span>🌐</span>
+            </div>
+            <div class="kpi-val" id="kpi-total">-</div>
+            <div class="kpi-sub">
+                <span class="pill-up" id="kpi-total-growth">-</span>
+                <span style="color:var(--text-muted);">เทียบ Baseline ปลายปี 2025</span>
+            </div>
+        </div>
+
+        <div class="kpi-card" style="--card-accent: #3b82f6;">
+            <div class="kpi-title">
+                <span>FTTH Subscribers</span>
+                <span>🏡</span>
+            </div>
+            <div class="kpi-val" id="kpi-ftth">-</div>
+            <div class="kpi-sub">
+                <span class="pill-up" id="kpi-ftth-growth">-</span>
+                <span style="color:var(--text-muted);" id="kpi-ftth-share">-</span>
+            </div>
+        </div>
+
+        <div class="kpi-card" style="--card-accent: #a855f7;">
+            <div class="kpi-title">
+                <span>FTTB Subscribers</span>
+                <span>🏢</span>
+            </div>
+            <div class="kpi-val" id="kpi-fttb">-</div>
+            <div class="kpi-sub">
+                <span class="pill-down" id="kpi-fttb-growth">-</span>
+                <span style="color:var(--text-muted);" id="kpi-fttb-share">-</span>
+            </div>
+        </div>
+
+        <div class="kpi-card" style="--card-accent: #10b981;">
+            <div class="kpi-title">
+                <span>Net Adds สัปดาห์ล่าสุด</span>
+                <span>⚡</span>
+            </div>
+            <div class="kpi-val" id="kpi-latest-netadds">-</div>
+            <div class="kpi-sub">
+                <span style="color:var(--text-muted);" id="kpi-netadds-detail">FTTH: - / FTTB: -</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Regional Mini Cards (5 Regions) -->
+    <div style="margin-bottom:12px;font-family:var(--font-display);font-size:1.15rem;font-weight:700;display:flex;align-items:center;gap:8px;">
+        <span>🗺️ ข้อมูลแยกตามภูมิภาค (Regional Performance)</span>
+    </div>
+    <div class="region-grid" id="regionCardsContainer">
+        <!-- Injected via JS -->
+    </div>
+
+    <!-- Section 1: Main Trend & Tech Share -->
+    <div class="chart-grid-2">
+        <div class="panel">
+            <div class="panel-header">
+                <div class="panel-title">📈 แนวโน้มการเติบโต Active Subscribers รวม (FTTH vs FTTB)</div>
+                <div class="panel-actions">
+                    <button class="btn-toggle active" onclick="setMainChartMode('all')">ทั้งหมด</button>
+                    <button class="btn-toggle" onclick="setMainChartMode('ftth')">เฉพาะ FTTH</button>
+                    <button class="btn-toggle" onclick="setMainChartMode('fttb')">เฉพาะ FTTB</button>
+                </div>
+            </div>
+            <div class="chart-box">
+                <canvas id="mainTrendChart"></canvas>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-header">
+                <div class="panel-title">🗺️ สัดส่วนตามภูมิภาค (Regional Share)</div>
+            </div>
+            <div class="chart-box">
+                <canvas id="regionPieChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 2: Regional Dedicated Multi-Chart -->
+    <div class="panel" style="margin-bottom:24px;">
+        <div class="panel-header">
+            <div>
+                <div class="panel-title">🗺️ กราฟแนวโน้มรายภูมิภาค (Regional Subscriber Growth & Trends)</div>
+                <div style="color:var(--text-muted);font-size:0.82rem;margin-top:4px;">เลือกดูเปรียบเทียบทุกภาค หรือคลิกเพื่อดูเจาะลึกเฉพาะภาคที่ต้องการ</div>
+            </div>
+            <div class="panel-actions" id="regionFilterButtons">
+                <button class="btn-toggle active" onclick="setRegionChartFilter('ALL')">🌐 รวมทุกภาค (All)</button>
+                <button class="btn-toggle" onclick="setRegionChartFilter('BMA')">BMA (กทม./ปริมณฑล)</button>
+                <button class="btn-toggle" onclick="setRegionChartFilter('Northeast')">Northeast (อีสาน)</button>
+                <button class="btn-toggle" onclick="setRegionChartFilter('Central')">Central (กลาง/ตอ./ตต.)</button>
+                <button class="btn-toggle" onclick="setRegionChartFilter('North')">North (เหนือ)</button>
+                <button class="btn-toggle" onclick="setRegionChartFilter('South')">South (ใต้)</button>
+            </div>
+        </div>
+        <div class="chart-box-large">
+            <canvas id="regionDetailedChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Section 3: Weekly Net Adds & Regional Distribution Bar Chart -->
+    <div class="chart-grid-equal">
+        <div class="panel">
+            <div class="panel-header">
+                <div class="panel-title">⚡ การเปลี่ยนแปลงรายสัปดาห์ (Weekly Net Adds รวม)</div>
+            </div>
+            <div class="chart-box">
+                <canvas id="weeklyAddsChart"></canvas>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-header">
+                <div class="panel-title">📊 ยอด Net Adds แยกตามภูมิภาค (Weekly Net Adds by Region)</div>
+            </div>
+            <div class="chart-box">
+                <canvas id="regionAddsBarChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 4: Table Section -->
+    <div class="panel">
+        <div class="action-bar">
+            <div class="panel-title">📋 ตารางบันทึกข้อมูลรายสัปดาห์ (Weekly MB Checkpoints)</div>
+            <div style="display:flex;gap:10px;align-items:center;">
+                <input type="text" id="tableSearch" class="search-box" placeholder="ค้นหาวันที่..." oninput="renderTable()">
+                <button class="btn-action" onclick="exportExcel()">📥 Export Excel</button>
+                <button class="btn-action" style="background:rgba(255,255,255,0.08);" onclick="exportCSV()">📄 Export CSV</button>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table id="dataTable">
+                <thead>
+                    <tr>
+                        <th>วันที่ (Date)</th>
+                        <th>Active รวม</th>
+                        <th>FTTH</th>
+                        <th>FTTB</th>
+                        <th>Net Adds (+/-)</th>
+                        <th>FTTH Adds</th>
+                        <th>FTTB Adds</th>
+                        <th>BMA</th>
+                        <th>Northeast</th>
+                        <th>Central</th>
+                        <th>North</th>
+                        <th>South</th>
+                        <th>Other</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <tr><td colspan="13" style="text-align:center;color:var(--text-muted);">กำลังโหลดข้อมูล...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<script>
+let RAW_DATA = null;
+// EMBEDDED_MB_DATA_START
+window.EMBEDDED_MB_DATA = {
+  "kpi": {
+    "latest_date": "2026-08-31",
+    "baseline_date": "2025-12-29",
+    "latest_total": 3405937,
+    "baseline_total": 3321991,
+    "net_growth_total": 83946,
+    "pct_growth_total": 2.53,
+    "latest_ftth": 3372389,
+    "baseline_ftth": 3284469,
+    "net_growth_ftth": 87920,
+    "pct_growth_ftth": 2.68,
+    "latest_fttb": 33548,
+    "baseline_fttb": 37522,
+    "net_growth_fttb": -3974,
+    "pct_growth_fttb": -10.59,
+    "total_checkpoints": 18
+  },
+  "timeline": [
+    {
+      "date": "2025-12-29",
+      "total_active": 3321991,
+      "ftth": 3284469,
+      "fttb": 37522,
+      "fttb_estimated": false,
+      "delta_total": 0,
+      "delta_ftth": 0,
+      "delta_fttb": 0,
+      "by_region": {
+        "BMA": 1481684,
+        "Central": 537199,
+        "North": 401120,
+        "Northeast": 646495,
+        "South": 282200,
+        "Other": 1783
+      },
+      "top_speeds": {
+        "FIBERHOME_500_500": 1211388,
+        "FIBERHOME_200_200": 677751,
+        "FIBERHOME_300_300": 610892,
+        "FIBERHOME_1G_500": 341816,
+        "FIBERHOME_1G_200": 247232,
+        "FIBERHOME_1G_1G": 79285
+      }
+    },
+    {
+      "date": "2026-01-05",
+      "total_active": 3323996,
+      "ftth": 3286584,
+      "fttb": 37412,
+      "fttb_estimated": false,
+      "delta_total": 2005,
+      "delta_ftth": 2115,
+      "delta_fttb": -110,
+      "by_region": {
+        "BMA": 1480811,
+        "Central": 536308,
+        "North": 400128,
+        "Northeast": 647161,
+        "South": 282195,
+        "Other": 1834
+      },
+      "top_speeds": {
+        "FIBERHOME_500_500": 1213364,
+        "FIBERHOME_200_200": 676322,
+        "FIBERHOME_300_300": 611212,
+        "FIBERHOME_1G_500": 340772,
+        "FIBERHOME_1G_200": 245799,
+        "FIBERHOME_1G_1G": 79485
+      }
+    },
+    {
+      "date": "2026-02-02",
+      "total_active": 3329726,
+      "ftth": 3292789,
+      "fttb": 36937,
+      "fttb_estimated": false,
+      "delta_total": 5730,
+      "delta_ftth": 6205,
+      "delta_fttb": -475,
+      "by_region": {
+        "BMA": 1493514,
+        "Central": 538105,
+        "North": 401673,
+        "Northeast": 649956,
+        "South": 283469,
+        "Other": 1775
+      },
+      "top_speeds": {
+        "FIBERHOME_500_500": 1235582,
+        "FIBERHOME_200_200": 675810,
+        "FIBERHOME_300_300": 615343,
+        "FIBERHOME_1G_500": 338295,
+        "FIBERHOME_1G_200": 241409,
+        "FIBERHOME_1G_1G": 82365
+      }
+    },
+    {
+      "date": "2026-03-02",
+      "total_active": 3340227,
+      "ftth": 3303777,
+      "fttb": 36450,
+      "fttb_estimated": false,
+      "delta_total": 10501,
+      "delta_ftth": 10988,
+      "delta_fttb": -487,
+      "by_region": {
+        "BMA": 1496168,
+        "Central": 541075,
+        "North": 404781,
+        "Northeast": 656966,
+        "South": 285342,
+        "Other": 1820
+      },
+      "top_speeds": {
+        "FIBERHOME_500_500": 1254779,
+        "FIBERHOME_200_200": 675463,
+        "FIBERHOME_300_300": 621225,
+        "FIBERHOME_1G_500": 336114,
+        "FIBERHOME_1G_200": 236360,
+        "FIBERHOME_1G_1G": 84776
+      }
+    },
+    {
+      "date": "2026-04-06",
+      "total_active": 3359112,
+      "ftth": 3323253,
+      "fttb": 35859,
+      "fttb_estimated": false,
+      "delta_total": 18885,
+      "delta_ftth": 19476,
+      "delta_fttb": -591,
+      "by_region": {
+        "BMA": 1494082,
+        "Central": 545332,
+        "North": 407629,
+        "Northeast": 671125,
+        "South": 286927,
+        "Other": 1841
+      },
+      "top_speeds": {
+        "FIBERHOME_500_500": 1282612,
+        "FIBERHOME_200_200": 673011,
+        "FIBERHOME_300_300": 630323,
+        "FIBERHOME_1G_500": 331030,
+        "FIBERHOME_1G_200": 229231,
+        "FIBERHOME_1G_1G": 87188
+      }
+    },
+    {
+      "date": "2026-05-04",
+      "total_active": 3364120,
+      "ftth": 3328710,
+      "fttb": 35410,
+      "fttb_estimated": false,
+      "delta_total": 5008,
+      "delta_ftth": 5457,
+      "delta_fttb": -449,
+      "by_region": {
+        "BMA": 1502309,
+        "Central": 546767,
+        "North": 409000,
+        "Northeast": 666061,
+        "South": 288166,
+        "Other": 1896
+      },
+      "top_speeds": {
+        "FIBERHOME_500_500": 1301013,
+        "FIBERHOME_200_200": 672279,
+        "FIBERHOME_300_300": 630038,
+        "FIBERHOME_1G_500": 325634,
+        "FIBERHOME_1G_200": 224194,
+        "FIBERHOME_1G_1G": 88967
+      }
+    },
+    {
+      "date": "2026-06-01",
+      "total_active": 3371834,
+      "ftth": 3336931,
+      "fttb": 34903,
+      "fttb_estimated": false,
+      "delta_total": 7714,
+      "delta_ftth": 8221,
+      "delta_fttb": -507,
+      "by_region": {
+        "BMA": 1501680,
+        "Central": 551773,
+        "North": 410076,
+        "Northeast": 668755,
+        "South": 289634,
+        "Other": 1905
+      },
+      "top_speeds": {
+        "FIBERHOME_500_500": 1326094,
+        "FIBERHOME_200_200": 670829,
+        "FIBERHOME_300_300": 633165,
+        "FIBERHOME_1G_500": 317711,
+        "FIBERHOME_1G_200": 216401,
+        "FIBERHOME_1G_1G": 91329
+      }
+    },
+    {
+      "date": "2026-06-22",
+      "total_active": 3381683,
+      "ftth": 3347053,
+      "fttb": 34630,
+      "fttb_estimated": false,
+      "delta_total": 9849,
+      "delta_ftth": 10122,
+      "delta_fttb": -273,
+      "by_region": {
+        "BMA": 1503453,
+        "Central": 550535,
+        "North": 412120,
+        "Northeast": 667333,
+        "South": 291595,
+        "Other": 1805
+      },
+      "top_speeds": {
+        "FIBERHOME_500_500": 1344052,
+        "FIBERHOME_200_200": 668128,
+        "FIBERHOME_300_300": 633154,
+        "FIBERHOME_1G_500": 313147,
+        "FIBERHOME_1G_200": 211181,
+        "FIBERHOME_1G_1G": 91163
+      }
+    },
+    {
+      "date": "2026-06-29",
+      "total_active": 3381062,
+      "ftth": 3346587,
+      "fttb": 34475,
+      "fttb_estimated": false,
+      "delta_total": -621,
+      "delta_ftth": -466,
+      "delta_fttb": -155,
+      "by_region": {
+        "BMA": 1532023,
+        "Central": 554522,
+        "North": 411373,
+        "Northeast": 668984,
+        "South": 291578,
+        "Other": 2072
+      },
+      "top_speeds": {
+        "FIBERHOME_500_500": 1347856,
+        "FIBERHOME_200_200": 667686,
+        "FIBERHOME_300_300": 632685,
+        "FIBERHOME_1G_500": 312560,
+        "FIBERHOME_1G_200": 209334,
+        "FIBERHOME_1G_1G": 90922
+      }
+    },
+    {
+      "date": "2026-07-06",
+      "total_active": 3388341,
+      "ftth": 3353936,
+      "fttb": 34405,
+      "fttb_estimated": false,
+      "delta_total": 7279,
+      "delta_ftth": 7349,
+      "delta_fttb": -70,
+      "by_region": {
+        "BMA": 1503338,
+        "Central": 552576,
+        "North": 412487,
+        "Northeast": 668922,
+        "South": 292401,
+        "Other": 1845
+      },
+      "top_speeds": {
+        "FIBERHOME_500_500": 1356366,
+        "FIBERHOME_200_200": 667326,
+        "FIBERHOME_300_300": 633657,
+        "FIBERHOME_1G_500": 311703,
+        "FIBERHOME_1G_200": 207454,
+        "FIBERHOME_1G_1G": 90990
+      }
+    },
+    {
+      "date": "2026-07-13",
+      "total_active": 3394280,
+      "ftth": 3359981,
+      "fttb": 34299,
+      "fttb_estimated": false,
+      "delta_total": 5939,
+      "delta_ftth": 6045,
+      "delta_fttb": -106,
+      "by_region": {
+        "BMA": 1509266,
+        "Central": 553133,
+        "North": 413513,
+        "Northeast": 669862,
+        "South": 292632,
+        "Other": 1774
+      },
+      "top_speeds": {
+        "FIBERHOME_500_500": 1365159,
+        "FIBERHOME_200_200": 667954,
+        "FIBERHOME_300_300": 634749,
+        "FIBERHOME_1G_500": 311168,
+        "FIBERHOME_1G_200": 206192,
+        "FIBERHOME_1G_1G": 91177
+      }
+    },
+    {
+      "date": "2026-07-20",
+      "total_active": 3396511,
+      "ftth": 3362329,
+      "fttb": 34182,
+      "fttb_estimated": false,
+      "delta_total": 2231,
+      "delta_ftth": 2348,
+      "delta_fttb": -117,
+      "by_region": {
+        "BMA": 1504104,
+        "Central": 553202,
+        "North": 413705,
+        "Northeast": 670636,
+        "South": 293241,
+        "Other": 1759
+      },
+      "top_speeds": {
+        "FIBERHOME_500_500": 1369095,
+        "FIBERHOME_200_200": 666694,
+        "FIBERHOME_300_300": 634535,
+        "FIBERHOME_1G_500": 308826,
+        "FIBERHOME_1G_200": 203674,
+        "FIBERHOME_1G_1G": 90913
+      }
+    },
+    {
+      "date": "2026-07-27",
+      "total_active": 3396991,
+      "ftth": 3362809,
+      "fttb": 34182,
+      "fttb_estimated": true,
+      "delta_total": 480,
+      "delta_ftth": 480,
+      "delta_fttb": 0,
+      "by_region": {
+        "BMA": 1477590,
+        "Central": 549138,
+        "North": 414056,
+        "Northeast": 670575,
+        "South": 292415,
+        "Other": 1618
+      },
+      "top_speeds": {
+        "FIBERHOME_500_500": 1374244,
+        "FIBERHOME_200_200": 666890,
+        "FIBERHOME_300_300": 635607,
+        "FIBERHOME_1G_500": 307332,
+        "FIBERHOME_1G_200": 201980,
+        "FIBERHOME_1G_1G": 90804
+      }
+    },
+    {
+      "date": "2026-08-03",
+      "total_active": 3396179,
+      "ftth": 3362277,
+      "fttb": 33902,
+      "fttb_estimated": false,
+      "delta_total": -812,
+      "delta_ftth": -532,
+      "delta_fttb": -280,
+      "by_region": {
+        "BMA": 1501615,
+        "Central": 551935,
+        "North": 414113,
+        "Northeast": 670312,
+        "South": 293744,
+        "Other": 1847
+      },
+      "top_speeds": {
+        "FIBERHOME_500_500": 1376782,
+        "FIBERHOME_200_200": 665254,
+        "FIBERHOME_300_300": 634140,
+        "FIBERHOME_1G_500": 305052,
+        "FIBERHOME_1G_200": 199739,
+        "FIBERHOME_1G_1G": 90558
+      }
+    },
+    {
+      "date": "2026-08-10",
+      "total_active": 3401391,
+      "ftth": 3367539,
+      "fttb": 33852,
+      "fttb_estimated": false,
+      "delta_total": 5212,
+      "delta_ftth": 5262,
+      "delta_fttb": -50,
+      "by_region": {
+        "BMA": 1505416,
+        "Central": 554297,
+        "North": 415971,
+        "Northeast": 671516,
+        "South": 293872,
+        "Other": 1773
+      },
+      "top_speeds": {
+        "FIBERHOME_500_500": 1385790,
+        "FIBERHOME_200_200": 666014,
+        "FIBERHOME_300_300": 635391,
+        "FIBERHOME_1G_500": 304537,
+        "FIBERHOME_1G_200": 198517,
+        "FIBERHOME_1G_1G": 90640
+      }
+    },
+    {
+      "date": "2026-08-17",
+      "total_active": 3402413,
+      "ftth": 3368688,
+      "fttb": 33725,
+      "fttb_estimated": false,
+      "delta_total": 1022,
+      "delta_ftth": 1149,
+      "delta_fttb": -127,
+      "by_region": {
+        "BMA": 1504868,
+        "Central": 553151,
+        "North": 415348,
+        "Northeast": 671249,
+        "South": 294410,
+        "Other": 1766
+      },
+      "top_speeds": {
+        "FIBERHOME_500_500": 1389868,
+        "FIBERHOME_200_200": 664423,
+        "FIBERHOME_300_300": 634862,
+        "FIBERHOME_1G_500": 303202,
+        "FIBERHOME_1G_200": 196663,
+        "FIBERHOME_1G_1G": 90478
+      }
+    },
+    {
+      "date": "2026-08-24",
+      "total_active": 3406742,
+      "ftth": 3373106,
+      "fttb": 33636,
+      "fttb_estimated": false,
+      "delta_total": 4329,
+      "delta_ftth": 4418,
+      "delta_fttb": -89,
+      "by_region": {
+        "BMA": 1505966,
+        "Central": 556348,
+        "North": 418150,
+        "Northeast": 672325,
+        "South": 294830,
+        "Other": 1846
+      },
+      "top_speeds": {
+        "FIBERHOME_500_500": 1399344,
+        "FIBERHOME_200_200": 665520,
+        "FIBERHOME_300_300": 635847,
+        "FIBERHOME_1G_500": 301935,
+        "FIBERHOME_1G_200": 195111,
+        "FIBERHOME_1G_1G": 90555
+      }
+    },
+    {
+      "date": "2026-08-31",
+      "total_active": 3405937,
+      "ftth": 3372389,
+      "fttb": 33548,
+      "fttb_estimated": false,
+      "delta_total": -805,
+      "delta_ftth": -717,
+      "delta_fttb": -88,
+      "by_region": {
+        "BMA": 1505939,
+        "Central": 555631,
+        "North": 416576,
+        "Northeast": 671679,
+        "South": 295217,
+        "Other": 1771
+      },
+      "top_speeds": {
+        "FIBERHOME_500_500": 1402591,
+        "FIBERHOME_200_200": 664898,
+        "FIBERHOME_300_300": 634698,
+        "FIBERHOME_1G_500": 300336,
+        "FIBERHOME_1G_200": 193219,
+        "FIBERHOME_1G_1G": 90411
+      }
+    }
+  ]
+};
+// EMBEDDED_MB_DATA_END
+
+let mainChart = null;
+let shareChart = null;
+let addsChart = null;
+let regionDetailedChart = null;
+let regionAddsChart = null;
+let sparkCharts = {};
+let selectedRegion = 'ALL';
+
+const REGION_COLORS = {
+    'BMA': '#06b6d4',
+    'Northeast': '#8b5cf6',
+    'Central': '#f59e0b',
+    'North': '#10b981',
+    'South': '#f43f5e',
+    'Other': '#64748b'
+};
+
+const REGION_NAMES = {
+    'BMA': 'BMA (กทม./ปริมณฑล)',
+    'Northeast': 'Northeast (ภาคอีสาน)',
+    'Central': 'Central (กลาง/ตอ./ตต.)',
+    'North': 'North (ภาคเหนือ)',
+    'South': 'South (ภาคใต้)',
+    'Other': 'Other (Lab/ทดสอบ)'
+};
+
+async function init() {
+    try {
+        let resp = await fetch('mb_trend_data.json');
+        if (!resp.ok) throw new Error('Fetch failed');
+        RAW_DATA = await resp.json();
+    } catch(e) {
+        console.warn('Using embedded data', e);
+        if (window.EMBEDDED_MB_DATA) {
+            RAW_DATA = window.EMBEDDED_MB_DATA;
+        }
+    }
+
+    if (RAW_DATA) {
+        renderDashboard(RAW_DATA);
+    }
+}
+
+function renderDashboard(data) {
+    const kpi = data.kpi;
+    const tl = data.timeline;
+
+    // Header badges
+    document.getElementById('hdr-latest').innerText = kpi.latest_date;
+    document.getElementById('hdr-baseline').innerText = kpi.baseline_date;
+    document.getElementById('hdr-growth').innerText = `+${kpi.net_growth_total.toLocaleString()} (+${kpi.pct_growth_total}%)`;
+
+    // KPI Cards
+    document.getElementById('kpi-total').innerText = kpi.latest_total.toLocaleString();
+    document.getElementById('kpi-total-growth').innerText = `+${kpi.net_growth_total.toLocaleString()} (+${kpi.pct_growth_total}%)`;
+
+    document.getElementById('kpi-ftth').innerText = kpi.latest_ftth.toLocaleString();
+    document.getElementById('kpi-ftth-growth').innerText = `+${kpi.net_growth_ftth.toLocaleString()} (+${kpi.pct_growth_ftth}%)`;
+
+    document.getElementById('kpi-fttb').innerText = kpi.latest_fttb.toLocaleString();
+    const fttbSign = kpi.net_growth_fttb >= 0 ? '+' : '';
+    document.getElementById('kpi-fttb-growth').innerText = `${fttbSign}${kpi.net_growth_fttb.toLocaleString()} (${kpi.pct_growth_fttb}%)`;
+
+    const ftthShare = ((kpi.latest_ftth / kpi.latest_total) * 100).toFixed(2);
+    const fttbShare = ((kpi.latest_fttb / kpi.latest_total) * 100).toFixed(2);
+    document.getElementById('kpi-ftth-share').innerText = `${ftthShare}% ของฐานทั้งหมด`;
+    document.getElementById('kpi-fttb-share').innerText = `${fttbShare}% ของฐานทั้งหมด`;
+
+    const latestTl = tl[tl.length - 1];
+    const prevTl = tl.length > 1 ? tl[tl.length - 2] : latestTl;
+    const latestNetAdds = latestTl.delta_total;
+    const netSign = latestNetAdds >= 0 ? '+' : '';
+    document.getElementById('kpi-latest-netadds').innerText = `${netSign}${latestNetAdds.toLocaleString()}`;
+    document.getElementById('kpi-netadds-detail').innerText = `FTTH: ${latestTl.delta_ftth >= 0 ? '+' : ''}${latestTl.delta_ftth.toLocaleString()} | FTTB: ${latestTl.delta_fttb >= 0 ? '+' : ''}${latestTl.delta_fttb.toLocaleString()}`;
+
+    // Render Region 5 Cards Grid
+    renderRegionCards(tl);
+
+    // Render Main Charts
+    renderMainTrendChart(tl);
+    renderRegionPieChart(latestTl);
+    renderRegionDetailedChart(tl, 'ALL');
+    renderWeeklyAddsChart(tl);
+    renderRegionAddsBarChart(tl);
+
+    // Render Table
+    renderTable();
+}
+
+function renderRegionCards(tl) {
+    const container = document.getElementById('regionCardsContainer');
+    container.innerHTML = '';
+
+    const latest = tl[tl.length - 1];
+    const base = tl[0];
+    const total = latest.total_active;
+    const regions = ['BMA', 'Northeast', 'Central', 'North', 'South'];
+
+    regions.forEach(reg => {
+        const latestCnt = latest.by_region?.[reg] || 0;
+        const baseCnt = base.by_region?.[reg] || 0;
+        const netDiff = latestCnt - baseCnt;
+        const netPct = baseCnt > 0 ? ((netDiff / baseCnt) * 100).toFixed(2) : 0;
+        const sharePct = ((latestCnt / total) * 100).toFixed(2);
+        const color = REGION_COLORS[reg];
+
+        const card = document.createElement('div');
+        card.className = `region-card ${selectedRegion === reg ? 'selected' : ''}`;
+        card.style.setProperty('--card-color', color);
+        card.onclick = () => setRegionChartFilter(reg);
+
+        card.innerHTML = `
+            <div class="region-card-header">
+                <span class="region-name">${reg}</span>
+                <span class="region-share">${sharePct}%</span>
+            </div>
+            <div class="region-val" style="color:#f8fafc;">${latestCnt.toLocaleString()}</div>
+            <div style="font-size:0.8rem;display:flex;align-items:center;gap:6px;">
+                <span class="pill-up">+${netDiff.toLocaleString()}</span>
+                <span style="color:var(--text-muted);">(+${netPct}%)</span>
+            </div>
+            <div class="region-spark-container">
+                <canvas id="spark_${reg}"></canvas>
+            </div>
+        `;
+        container.appendChild(card);
+
+        // Render Sparkline
+        setTimeout(() => {
+            renderSparkline(reg, tl.map(x => x.by_region?.[reg] || 0), color);
+        }, 50);
+    });
+}
+
+function renderSparkline(reg, data, color) {
+    const canvas = document.getElementById(`spark_${reg}`);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    if (sparkCharts[reg]) sparkCharts[reg].destroy();
+
+    sparkCharts[reg] = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: data.map((_, i) => i),
+            datasets: [{
+                data: data,
+                borderColor: color,
+                borderWidth: 2,
+                fill: true,
+                backgroundColor: color + '15',
+                tension: 0.35,
+                pointRadius: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false }, tooltip: { enabled: false } },
+            scales: { x: { display: false }, y: { display: false } }
+        }
+    });
+}
+
+function renderMainTrendChart(tl) {
+    const ctx = document.getElementById('mainTrendChart').getContext('2d');
+    const labels = tl.map(x => x.date);
+    const totalData = tl.map(x => x.total_active);
+    const ftthData = tl.map(x => x.ftth);
+    const fttbData = tl.map(x => x.fttb);
+
+    if (mainChart) mainChart.destroy();
+
+    mainChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Total Active',
+                    data: totalData,
+                    borderColor: '#06b6d4',
+                    backgroundColor: 'rgba(6, 182, 212, 0.1)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.35,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    yAxisID: 'y'
+                },
+                {
+                    label: 'FTTH',
+                    data: ftthData,
+                    borderColor: '#dc2626',
+                    backgroundColor: 'rgba(220, 38, 38, 0.1)',
+                    borderWidth: 2.5,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    fill: false,
+                    tension: 0.35,
+                    yAxisID: 'y'
+                },
+                {
+                    label: 'FTTB',
+                    data: fttbData,
+                    borderColor: '#a855f7',
+                    backgroundColor: 'rgba(168, 85, 247, 0.2)',
+                    borderWidth: 2,
+                    pointRadius: 3,
+                    fill: false,
+                    tension: 0.35,
+                    yAxisID: 'y1'
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { labels: { color: '#94a3b8', font: { family: 'Inter', size: 12 } } },
+                tooltip: {
+                    callbacks: {
+                        label: function(c) {
+                            return `${c.dataset.label}: ${c.raw.toLocaleString()} ราย`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#64748b' } },
+                y: {
+                    position: 'left',
+                    grid: { color: 'rgba(255,255,255,0.05)' },
+                    ticks: {
+                        color: '#06b6d4',
+                        callback: v => (v / 1000000).toFixed(2) + 'M'
+                    }
+                },
+                y1: {
+                    position: 'right',
+                    grid: { drawOnChartArea: false },
+                    ticks: { color: '#a855f7', callback: v => (v/1000).toFixed(0) + 'k' }
+                }
+            }
+        }
+    });
+}
+
+function setMainChartMode(mode) {
+    document.querySelectorAll('.panel-actions .btn-toggle').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+
+    if (!mainChart) return;
+    if (mode === 'all') {
+        mainChart.show(0);
+        mainChart.show(1);
+        mainChart.show(2);
+    } else if (mode === 'ftth') {
+        mainChart.hide(0);
+        mainChart.show(1);
+        mainChart.hide(2);
+    } else if (mode === 'fttb') {
+        mainChart.hide(0);
+        mainChart.hide(1);
+        mainChart.show(2);
+    }
+}
+
+function renderRegionPieChart(latest) {
+    const ctx = document.getElementById('regionPieChart').getContext('2d');
+    if (shareChart) shareChart.destroy();
+
+    const regions = ['BMA', 'Northeast', 'Central', 'North', 'South'];
+    const labels = regions.map(r => REGION_NAMES[r]);
+    const data = regions.map(r => latest.by_region?.[r] || 0);
+    const bgColors = regions.map(r => REGION_COLORS[r]);
+    const total = data.reduce((a, b) => a + b, 0);
+
+    shareChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: data,
+                backgroundColor: bgColors,
+                borderColor: '#030712',
+                borderWidth: 2.5
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { 
+                    position: 'bottom', 
+                    labels: { 
+                        color: '#94a3b8', 
+                        font: { family: 'Inter', size: 10.5 },
+                        boxWidth: 10,
+                        padding: 6
+                    } 
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(c) {
+                            const val = c.raw;
+                            const pct = total > 0 ? ((val / total) * 100).toFixed(2) : 0;
+                            return `${c.label}: ${val.toLocaleString()} ราย (${pct}%)`;
+                        }
+                    }
+                }
+            },
+            cutout: '62%'
+        }
+    });
+}
+
+function renderRegionDetailedChart(tl, filterRegion) {
+    const ctx = document.getElementById('regionDetailedChart').getContext('2d');
+    const labels = tl.map(x => x.date);
+
+    if (regionDetailedChart) regionDetailedChart.destroy();
+
+    let datasets = [];
+
+    if (filterRegion === 'ALL') {
+        const regions = ['BMA', 'Northeast', 'Central', 'North', 'South'];
+        datasets = regions.map(reg => ({
+            label: REGION_NAMES[reg],
+            data: tl.map(x => x.by_region?.[reg] || 0),
+            borderColor: REGION_COLORS[reg],
+            backgroundColor: REGION_COLORS[reg] + '18',
+            borderWidth: 2.5,
+            tension: 0.35,
+            fill: false,
+            pointRadius: 4,
+            pointHoverRadius: 6
+        }));
+    } else {
+        const color = REGION_COLORS[filterRegion] || '#06b6d4';
+        const data = tl.map(x => x.by_region?.[filterRegion] || 0);
+
+        datasets = [
+            {
+                label: `${REGION_NAMES[filterRegion]} - ยอด Active รวม`,
+                data: data,
+                borderColor: color,
+                backgroundColor: color + '22',
+                borderWidth: 3,
+                tension: 0.35,
+                fill: true,
+                pointRadius: 5,
+                pointHoverRadius: 7
+            }
+        ];
+    }
+
+    regionDetailedChart = new Chart(ctx, {
+        type: 'line',
+        data: { labels, datasets },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { position: 'top', labels: { color: '#94a3b8', font: { family: 'Inter', size: 12 } } },
+                tooltip: {
+                    callbacks: {
+                        label: function(c) {
+                            return `${c.dataset.label}: ${c.raw.toLocaleString()} ราย`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#64748b' } },
+                y: {
+                    grid: { color: 'rgba(255,255,255,0.05)' },
+                    ticks: {
+                        color: '#94a3b8',
+                        callback: v => (v >= 1000000 ? (v/1000000).toFixed(2) + 'M' : (v/1000).toFixed(0) + 'k')
+                    }
+                }
+            }
+        }
+    });
+}
+
+function setRegionChartFilter(reg) {
+    selectedRegion = reg;
+    document.querySelectorAll('#regionFilterButtons .btn-toggle').forEach(b => b.classList.remove('active'));
+    
+    // Set active button
+    const buttons = document.querySelectorAll('#regionFilterButtons .btn-toggle');
+    const mapping = { 'ALL': 0, 'BMA': 1, 'Northeast': 2, 'Central': 3, 'North': 4, 'South': 5 };
+    if (buttons[mapping[reg]]) buttons[mapping[reg]].classList.add('active');
+
+    // Update region card selected border
+    document.querySelectorAll('.region-card').forEach(c => c.classList.remove('selected'));
+    const cards = document.querySelectorAll('.region-card');
+    const cardMap = { 'BMA': 0, 'Northeast': 1, 'Central': 2, 'North': 3, 'South': 4 };
+    if (cards[cardMap[reg]]) cards[cardMap[reg]].classList.add('selected');
+
+    if (RAW_DATA) {
+        renderRegionDetailedChart(RAW_DATA.timeline, reg);
+    }
+}
+
+function renderWeeklyAddsChart(tl) {
+    const ctx = document.getElementById('weeklyAddsChart').getContext('2d');
+    const filteredTl = tl.slice(1);
+    const labels = filteredTl.map(x => x.date);
+    const deltas = filteredTl.map(x => x.delta_total);
+    const bgColors = deltas.map(v => v >= 0 ? 'rgba(16, 185, 129, 0.7)' : 'rgba(244, 63, 94, 0.7)');
+    const borderColors = deltas.map(v => v >= 0 ? '#10b981' : '#f43f5e');
+
+    if (addsChart) addsChart.destroy();
+
+    addsChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Net Adds (+/-)',
+                data: deltas,
+                backgroundColor: bgColors,
+                borderColor: borderColors,
+                borderWidth: 1.5,
+                borderRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(c) {
+                            return `Net Adds: ${c.raw >= 0 ? '+' : ''}${c.raw.toLocaleString()} ราย`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: { grid: { display: false }, ticks: { color: '#64748b' } },
+                y: {
+                    grid: { color: 'rgba(255,255,255,0.05)' },
+                    ticks: { color: '#94a3b8', callback: v => (v >= 0 ? '+' : '') + v.toLocaleString() }
+                }
+            }
+        }
+    });
+}
+
+function renderRegionAddsBarChart(tl) {
+    const ctx = document.getElementById('regionAddsBarChart').getContext('2d');
+    const filteredTl = tl.slice(1);
+    const labels = filteredTl.map(x => x.date);
+    const regions = ['BMA', 'Northeast', 'Central', 'North', 'South'];
+
+    const datasets = regions.map(reg => {
+        const deltas = [];
+        for (let i = 1; i < tl.length; i++) {
+            const curr = tl[i].by_region?.[reg] || 0;
+            const prev = tl[i-1].by_region?.[reg] || 0;
+            deltas.push(curr - prev);
+        }
+        return {
+            label: reg,
+            data: deltas,
+            backgroundColor: REGION_COLORS[reg] + 'bb',
+            borderColor: REGION_COLORS[reg],
+            borderWidth: 1,
+            borderRadius: 4
+        };
+    });
+
+    if (regionAddsChart) regionAddsChart.destroy();
+
+    regionAddsChart = new Chart(ctx, {
+        type: 'bar',
+        data: { labels, datasets },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { position: 'top', labels: { color: '#94a3b8', font: { family: 'Inter', size: 11 } } },
+                tooltip: {
+                    callbacks: {
+                        label: function(c) {
+                            return `${c.dataset.label}: ${c.raw >= 0 ? '+' : ''}${c.raw.toLocaleString()} ราย`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: { grid: { display: false }, ticks: { color: '#64748b' } },
+                y: {
+                    grid: { color: 'rgba(255,255,255,0.05)' },
+                    ticks: { color: '#94a3b8', callback: v => (v >= 0 ? '+' : '') + v.toLocaleString() }
+                }
+            }
+        }
+    });
+}
+
+function renderTable() {
+    if (!RAW_DATA) return;
+    const query = (document.getElementById('tableSearch').value || '').trim().toLowerCase();
+    const tbody = document.getElementById('tableBody');
+    tbody.innerHTML = '';
+
+    const list = [...RAW_DATA.timeline].reverse();
+    let filtered = list.filter(r => r.date.toLowerCase().includes(query));
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="13" style="text-align:center;color:var(--text-muted);padding:24px;">ไม่พบข้อมูลตามคำค้นหา</td></tr>`;
+        return;
+    }
+
+    filtered.forEach(r => {
+        const netSign = r.delta_total >= 0 ? '+' : '';
+        const ftthSign = r.delta_ftth >= 0 ? '+' : '';
+        const fttbSign = r.delta_fttb >= 0 ? '+' : '';
+
+        const reg = r.by_region || {};
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td style="font-weight:700;color:#38bdf8;">${r.date}</td>
+            <td style="font-weight:700;">${r.total_active.toLocaleString()}</td>
+            <td style="color:#818cf8;">${r.ftth.toLocaleString()}</td>
+            <td style="color:#c084fc;">${r.fttb.toLocaleString()}${r.fttb_estimated ? ' <span style="font-size:0.7rem;color:var(--text-muted);">(est)</span>' : ''}</td>
+            <td><span class="${r.delta_total >= 0 ? 'pill-up' : 'pill-down'}">${netSign}${r.delta_total.toLocaleString()}</span></td>
+            <td><span style="color:${r.delta_ftth >= 0 ? '#34d399' : '#fb7185'};">${ftthSign}${r.delta_ftth.toLocaleString()}</span></td>
+            <td><span style="color:${r.delta_fttb >= 0 ? '#34d399' : '#fb7185'};">${fttbSign}${r.delta_fttb.toLocaleString()}</span></td>
+            <td>${(reg.BMA || 0).toLocaleString()}</td>
+            <td>${(reg.Northeast || 0).toLocaleString()}</td>
+            <td>${(reg.Central || 0).toLocaleString()}</td>
+            <td>${(reg.North || 0).toLocaleString()}</td>
+            <td>${(reg.South || 0).toLocaleString()}</td>
+            <td style="color:var(--text-muted);">${(reg.Other || 0).toLocaleString()}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function exportExcel() {
+    if (!RAW_DATA) return;
+    const wb = XLSX.utils.book_new();
+
+    const headers = [
+        ["Date", "Total Active", "FTTH", "FTTB", "Net Adds", "FTTH Adds", "FTTB Adds", "BMA", "Northeast", "Central", "North", "South", "Other"]
+    ];
+
+    RAW_DATA.timeline.forEach(r => {
+        const reg = r.by_region || {};
+        headers.push([
+            r.date,
+            r.total_active,
+            r.ftth,
+            r.fttb,
+            r.delta_total,
+            r.delta_ftth,
+            r.delta_fttb,
+            reg.BMA || 0,
+            reg.Northeast || 0,
+            reg.Central || 0,
+            reg.North || 0,
+            reg.South || 0,
+            reg.Other || 0
+        ]);
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(headers);
+    XLSX.utils.book_append_sheet(wb, ws, "FTTH_FTTB_Trends");
+    XLSX.writeFile(wb, `FTTH_FTTB_Subscriber_Trends_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+function exportCSV() {
+    if (!RAW_DATA) return;
+    let csv = "\uFEFFDate,Total_Active,FTTH,FTTB,Net_Adds,FTTH_Adds,FTTB_Adds,BMA,Northeast,Central,North,South,Other\n";
+    RAW_DATA.timeline.forEach(r => {
+        const reg = r.by_region || {};
+        csv += `${r.date},${r.total_active},${r.ftth},${r.fttb},${r.delta_total},${r.delta_ftth},${r.delta_fttb},${reg.BMA||0},${reg.Northeast||0},${reg.Central||0},${reg.North||0},${reg.South||0},${reg.Other||0}\n`;
+    });
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `FTTH_FTTB_Subscriber_Trends_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+}
+
+window.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>

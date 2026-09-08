@@ -1,0 +1,489 @@
+{
+  "kpi": {
+    "latest_date": "2026-08-31",
+    "baseline_date": "2025-12-29",
+    "latest_total": 3405937,
+    "baseline_total": 3321991,
+    "net_growth_total": 83946,
+    "pct_growth_total": 2.53,
+    "latest_ftth": 3372389,
+    "baseline_ftth": 3284469,
+    "net_growth_ftth": 87920,
+    "pct_growth_ftth": 2.68,
+    "latest_fttb": 33548,
+    "baseline_fttb": 37522,
+    "net_growth_fttb": -3974,
+    "pct_growth_fttb": -10.59,
+    "total_checkpoints": 18
+  },
+  "timeline": [
+    {
+      "date": "2025-12-29",
+      "total_active": 3321991,
+      "ftth": 3284469,
+      "fttb": 37522,
+      "fttb_estimated": false,
+      "delta_total": 0,
+      "delta_ftth": 0,
+      "delta_fttb": 0,
+      "by_region": {
+        "BMA": 1481684,
+        "Central": 537199,
+        "North": 401120,
+        "Northeast": 646495,
+        "South": 282200,
+        "Other": 1783
+      },
+      "top_speeds": {
+        "FIBERHOME_500_500": 1211388,
+        "FIBERHOME_200_200": 677751,
+        "FIBERHOME_300_300": 610892,
+        "FIBERHOME_1G_500": 341816,
+        "FIBERHOME_1G_200": 247232,
+        "FIBERHOME_1G_1G": 79285
+      }
+    },
+    {
+      "date": "2026-01-05",
+      "total_active": 3323996,
+      "ftth": 3286584,
+      "fttb": 37412,
+      "fttb_estimated": false,
+      "delta_total": 2005,
+      "delta_ftth": 2115,
+      "delta_fttb": -110,
+      "by_region": {
+        "BMA": 1480811,
+        "Central": 536308,
+        "North": 400128,
+        "Northeast": 647161,
+        "South": 282195,
+        "Other": 1834
+      },
+      "top_speeds": {
+        "FIBERHOME_500_500": 1213364,
+        "FIBERHOME_200_200": 676322,
+        "FIBERHOME_300_300": 611212,
+        "FIBERHOME_1G_500": 340772,
+        "FIBERHOME_1G_200": 245799,
+        "FIBERHOME_1G_1G": 79485
+      }
+    },
+    {
+      "date": "2026-02-02",
+      "total_active": 3329726,
+      "ftth": 3292789,
+      "fttb": 36937,
+      "fttb_estimated": false,
+      "delta_total": 5730,
+      "delta_ftth": 6205,
+      "delta_fttb": -475,
+      "by_region": {
+        "BMA": 1493514,
+        "Central": 538105,
+        "North": 401673,
+        "Northeast": 649956,
+        "South": 283469,
+        "Other": 1775
+      },
+      "top_speeds": {
+        "FIBERHOME_500_500": 1235582,
+        "FIBERHOME_200_200": 675810,
+        "FIBERHOME_300_300": 615343,
+        "FIBERHOME_1G_500": 338295,
+        "FIBERHOME_1G_200": 241409,
+        "FIBERHOME_1G_1G": 82365
+      }
+    },
+    {
+      "date": "2026-03-02",
+      "total_active": 3340227,
+      "ftth": 3303777,
+      "fttb": 36450,
+      "fttb_estimated": false,
+      "delta_total": 10501,
+      "delta_ftth": 10988,
+      "delta_fttb": -487,
+      "by_region": {
+        "BMA": 1496168,
+        "Central": 541075,
+        "North": 404781,
+        "Northeast": 656966,
+        "South": 285342,
+        "Other": 1820
+      },
+      "top_speeds": {
+        "FIBERHOME_500_500": 1254779,
+        "FIBERHOME_200_200": 675463,
+        "FIBERHOME_300_300": 621225,
+        "FIBERHOME_1G_500": 336114,
+        "FIBERHOME_1G_200": 236360,
+        "FIBERHOME_1G_1G": 84776
+      }
+    },
+    {
+      "date": "2026-04-06",
+      "total_active": 3359112,
+      "ftth": 3323253,
+      "fttb": 35859,
+      "fttb_estimated": false,
+      "delta_total": 18885,
+      "delta_ftth": 19476,
+      "delta_fttb": -591,
+      "by_region": {
+        "BMA": 1494082,
+        "Central": 545332,
+        "North": 407629,
+        "Northeast": 671125,
+        "South": 286927,
+        "Other": 1841
+      },
+      "top_speeds": {
+        "FIBERHOME_500_500": 1282612,
+        "FIBERHOME_200_200": 673011,
+        "FIBERHOME_300_300": 630323,
+        "FIBERHOME_1G_500": 331030,
+        "FIBERHOME_1G_200": 229231,
+        "FIBERHOME_1G_1G": 87188
+      }
+    },
+    {
+      "date": "2026-05-04",
+      "total_active": 3364120,
+      "ftth": 3328710,
+      "fttb": 35410,
+      "fttb_estimated": false,
+      "delta_total": 5008,
+      "delta_ftth": 5457,
+      "delta_fttb": -449,
+      "by_region": {
+        "BMA": 1502309,
+        "Central": 546767,
+        "North": 409000,
+        "Northeast": 666061,
+        "South": 288166,
+        "Other": 1896
+      },
+      "top_speeds": {
+        "FIBERHOME_500_500": 1301013,
+        "FIBERHOME_200_200": 672279,
+        "FIBERHOME_300_300": 630038,
+        "FIBERHOME_1G_500": 325634,
+        "FIBERHOME_1G_200": 224194,
+        "FIBERHOME_1G_1G": 88967
+      }
+    },
+    {
+      "date": "2026-06-01",
+      "total_active": 3371834,
+      "ftth": 3336931,
+      "fttb": 34903,
+      "fttb_estimated": false,
+      "delta_total": 7714,
+      "delta_ftth": 8221,
+      "delta_fttb": -507,
+      "by_region": {
+        "BMA": 1501680,
+        "Central": 551773,
+        "North": 410076,
+        "Northeast": 668755,
+        "South": 289634,
+        "Other": 1905
+      },
+      "top_speeds": {
+        "FIBERHOME_500_500": 1326094,
+        "FIBERHOME_200_200": 670829,
+        "FIBERHOME_300_300": 633165,
+        "FIBERHOME_1G_500": 317711,
+        "FIBERHOME_1G_200": 216401,
+        "FIBERHOME_1G_1G": 91329
+      }
+    },
+    {
+      "date": "2026-06-22",
+      "total_active": 3381683,
+      "ftth": 3347053,
+      "fttb": 34630,
+      "fttb_estimated": false,
+      "delta_total": 9849,
+      "delta_ftth": 10122,
+      "delta_fttb": -273,
+      "by_region": {
+        "BMA": 1503453,
+        "Central": 550535,
+        "North": 412120,
+        "Northeast": 667333,
+        "South": 291595,
+        "Other": 1805
+      },
+      "top_speeds": {
+        "FIBERHOME_500_500": 1344052,
+        "FIBERHOME_200_200": 668128,
+        "FIBERHOME_300_300": 633154,
+        "FIBERHOME_1G_500": 313147,
+        "FIBERHOME_1G_200": 211181,
+        "FIBERHOME_1G_1G": 91163
+      }
+    },
+    {
+      "date": "2026-06-29",
+      "total_active": 3381062,
+      "ftth": 3346587,
+      "fttb": 34475,
+      "fttb_estimated": false,
+      "delta_total": -621,
+      "delta_ftth": -466,
+      "delta_fttb": -155,
+      "by_region": {
+        "BMA": 1532023,
+        "Central": 554522,
+        "North": 411373,
+        "Northeast": 668984,
+        "South": 291578,
+        "Other": 2072
+      },
+      "top_speeds": {
+        "FIBERHOME_500_500": 1347856,
+        "FIBERHOME_200_200": 667686,
+        "FIBERHOME_300_300": 632685,
+        "FIBERHOME_1G_500": 312560,
+        "FIBERHOME_1G_200": 209334,
+        "FIBERHOME_1G_1G": 90922
+      }
+    },
+    {
+      "date": "2026-07-06",
+      "total_active": 3388341,
+      "ftth": 3353936,
+      "fttb": 34405,
+      "fttb_estimated": false,
+      "delta_total": 7279,
+      "delta_ftth": 7349,
+      "delta_fttb": -70,
+      "by_region": {
+        "BMA": 1503338,
+        "Central": 552576,
+        "North": 412487,
+        "Northeast": 668922,
+        "South": 292401,
+        "Other": 1845
+      },
+      "top_speeds": {
+        "FIBERHOME_500_500": 1356366,
+        "FIBERHOME_200_200": 667326,
+        "FIBERHOME_300_300": 633657,
+        "FIBERHOME_1G_500": 311703,
+        "FIBERHOME_1G_200": 207454,
+        "FIBERHOME_1G_1G": 90990
+      }
+    },
+    {
+      "date": "2026-07-13",
+      "total_active": 3394280,
+      "ftth": 3359981,
+      "fttb": 34299,
+      "fttb_estimated": false,
+      "delta_total": 5939,
+      "delta_ftth": 6045,
+      "delta_fttb": -106,
+      "by_region": {
+        "BMA": 1509266,
+        "Central": 553133,
+        "North": 413513,
+        "Northeast": 669862,
+        "South": 292632,
+        "Other": 1774
+      },
+      "top_speeds": {
+        "FIBERHOME_500_500": 1365159,
+        "FIBERHOME_200_200": 667954,
+        "FIBERHOME_300_300": 634749,
+        "FIBERHOME_1G_500": 311168,
+        "FIBERHOME_1G_200": 206192,
+        "FIBERHOME_1G_1G": 91177
+      }
+    },
+    {
+      "date": "2026-07-20",
+      "total_active": 3396511,
+      "ftth": 3362329,
+      "fttb": 34182,
+      "fttb_estimated": false,
+      "delta_total": 2231,
+      "delta_ftth": 2348,
+      "delta_fttb": -117,
+      "by_region": {
+        "BMA": 1504104,
+        "Central": 553202,
+        "North": 413705,
+        "Northeast": 670636,
+        "South": 293241,
+        "Other": 1759
+      },
+      "top_speeds": {
+        "FIBERHOME_500_500": 1369095,
+        "FIBERHOME_200_200": 666694,
+        "FIBERHOME_300_300": 634535,
+        "FIBERHOME_1G_500": 308826,
+        "FIBERHOME_1G_200": 203674,
+        "FIBERHOME_1G_1G": 90913
+      }
+    },
+    {
+      "date": "2026-07-27",
+      "total_active": 3396991,
+      "ftth": 3362809,
+      "fttb": 34182,
+      "fttb_estimated": true,
+      "delta_total": 480,
+      "delta_ftth": 480,
+      "delta_fttb": 0,
+      "by_region": {
+        "BMA": 1477590,
+        "Central": 549138,
+        "North": 414056,
+        "Northeast": 670575,
+        "South": 292415,
+        "Other": 1618
+      },
+      "top_speeds": {
+        "FIBERHOME_500_500": 1374244,
+        "FIBERHOME_200_200": 666890,
+        "FIBERHOME_300_300": 635607,
+        "FIBERHOME_1G_500": 307332,
+        "FIBERHOME_1G_200": 201980,
+        "FIBERHOME_1G_1G": 90804
+      }
+    },
+    {
+      "date": "2026-08-03",
+      "total_active": 3396179,
+      "ftth": 3362277,
+      "fttb": 33902,
+      "fttb_estimated": false,
+      "delta_total": -812,
+      "delta_ftth": -532,
+      "delta_fttb": -280,
+      "by_region": {
+        "BMA": 1501615,
+        "Central": 551935,
+        "North": 414113,
+        "Northeast": 670312,
+        "South": 293744,
+        "Other": 1847
+      },
+      "top_speeds": {
+        "FIBERHOME_500_500": 1376782,
+        "FIBERHOME_200_200": 665254,
+        "FIBERHOME_300_300": 634140,
+        "FIBERHOME_1G_500": 305052,
+        "FIBERHOME_1G_200": 199739,
+        "FIBERHOME_1G_1G": 90558
+      }
+    },
+    {
+      "date": "2026-08-10",
+      "total_active": 3401391,
+      "ftth": 3367539,
+      "fttb": 33852,
+      "fttb_estimated": false,
+      "delta_total": 5212,
+      "delta_ftth": 5262,
+      "delta_fttb": -50,
+      "by_region": {
+        "BMA": 1505416,
+        "Central": 554297,
+        "North": 415971,
+        "Northeast": 671516,
+        "South": 293872,
+        "Other": 1773
+      },
+      "top_speeds": {
+        "FIBERHOME_500_500": 1385790,
+        "FIBERHOME_200_200": 666014,
+        "FIBERHOME_300_300": 635391,
+        "FIBERHOME_1G_500": 304537,
+        "FIBERHOME_1G_200": 198517,
+        "FIBERHOME_1G_1G": 90640
+      }
+    },
+    {
+      "date": "2026-08-17",
+      "total_active": 3402413,
+      "ftth": 3368688,
+      "fttb": 33725,
+      "fttb_estimated": false,
+      "delta_total": 1022,
+      "delta_ftth": 1149,
+      "delta_fttb": -127,
+      "by_region": {
+        "BMA": 1504868,
+        "Central": 553151,
+        "North": 415348,
+        "Northeast": 671249,
+        "South": 294410,
+        "Other": 1766
+      },
+      "top_speeds": {
+        "FIBERHOME_500_500": 1389868,
+        "FIBERHOME_200_200": 664423,
+        "FIBERHOME_300_300": 634862,
+        "FIBERHOME_1G_500": 303202,
+        "FIBERHOME_1G_200": 196663,
+        "FIBERHOME_1G_1G": 90478
+      }
+    },
+    {
+      "date": "2026-08-24",
+      "total_active": 3406742,
+      "ftth": 3373106,
+      "fttb": 33636,
+      "fttb_estimated": false,
+      "delta_total": 4329,
+      "delta_ftth": 4418,
+      "delta_fttb": -89,
+      "by_region": {
+        "BMA": 1505966,
+        "Central": 556348,
+        "North": 418150,
+        "Northeast": 672325,
+        "South": 294830,
+        "Other": 1846
+      },
+      "top_speeds": {
+        "FIBERHOME_500_500": 1399344,
+        "FIBERHOME_200_200": 665520,
+        "FIBERHOME_300_300": 635847,
+        "FIBERHOME_1G_500": 301935,
+        "FIBERHOME_1G_200": 195111,
+        "FIBERHOME_1G_1G": 90555
+      }
+    },
+    {
+      "date": "2026-08-31",
+      "total_active": 3405937,
+      "ftth": 3372389,
+      "fttb": 33548,
+      "fttb_estimated": false,
+      "delta_total": -805,
+      "delta_ftth": -717,
+      "delta_fttb": -88,
+      "by_region": {
+        "BMA": 1505939,
+        "Central": 555631,
+        "North": 416576,
+        "Northeast": 671679,
+        "South": 295217,
+        "Other": 1771
+      },
+      "top_speeds": {
+        "FIBERHOME_500_500": 1402591,
+        "FIBERHOME_200_200": 664898,
+        "FIBERHOME_300_300": 634698,
+        "FIBERHOME_1G_500": 300336,
+        "FIBERHOME_1G_200": 193219,
+        "FIBERHOME_1G_1G": 90411
+      }
+    }
+  ]
+}
