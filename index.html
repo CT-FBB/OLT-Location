@@ -135,6 +135,13 @@ body {
   outline: none;
   transition: all 0.25s ease;
 }
+/* Disable Edge default clear / password reveal overlay icons */
+.search-input::-ms-clear,
+.search-input::-ms-reveal {
+  display: none;
+  width: 0;
+  height: 0;
+}
 .search-input:focus {
   background: #ffffff;
   border-color: var(--accent);
@@ -678,7 +685,7 @@ body {
   <div class="search-container">
     <div class="search-title">กรอกชื่อ OLT เพื่อสืบค้น</div>
     <div class="search-wrapper">
-      <input type="text" class="search-input" id="searchInput" placeholder="พิมพ์ชื่อ OLT ที่ต้องการสืบค้น (เช่น BKK06034GO0, NKW07002G00)..." autocomplete="off" oninput="handleInput()">
+      <input type="text" class="search-input" id="searchInput" placeholder="พิมพ์ชื่อ OLT หรือรหัส Site (เช่น RYG06019, RYG6766, BKK06034)..." autocomplete="off" oninput="handleInput()" onkeyup="handleKey(event)">
       <button class="search-btn" id="searchBtn" onclick="performSearch()">🔍 ค้นหา</button>
       
       <!-- Autocomplete Dropdown -->
@@ -837,27 +844,35 @@ const locationData = {"NKW07002G00": {"reg": "NORTH", "prov": "NAKHON SAWAN", "d
 
 let matchedNames = [];
 
-// Handle keystrokes for Autocomplete suggestion (prefix match prioritized)
+// Handle keystrokes for Autocomplete suggestion (comprehensive search: OLT Name, Sitename, IP)
 function getMatches(query) {
   if (!query) return [];
-  const searchString = query.replace(/GO([0-9])/g, 'G0$1');
+  const rawQuery = query.trim().toUpperCase();
+  const searchString = rawQuery.replace(/GO([0-9])/g, 'G0$1');
   const allKeys = Object.keys(locationData);
+  
   const startsWithMatches = [];
   const containsMatches = [];
+  const siteMatches = [];
   const ipMatches = [];
   
   for (const name of allKeys) {
     const searchName = name.replace(/GO([0-9])/g, 'G0$1');
-    const itemIp = (locationData[name] && locationData[name].ip) ? locationData[name].ip : '';
+    const info = locationData[name] || {};
+    const itemIp = info.ip || '';
+    const itemUplink = (info.uplink_site || '').toUpperCase();
+    
     if (searchName.startsWith(searchString)) {
       startsWithMatches.push(name);
     } else if (searchName.includes(searchString)) {
       containsMatches.push(name);
-    } else if (itemIp && itemIp.includes(query)) {
+    } else if (itemUplink && itemUplink.includes(rawQuery)) {
+      siteMatches.push(name);
+    } else if (itemIp && itemIp.includes(rawQuery)) {
       ipMatches.push(name);
     }
   }
-  return startsWithMatches.concat(containsMatches).concat(ipMatches);
+  return startsWithMatches.concat(containsMatches).concat(siteMatches).concat(ipMatches);
 }
 
 function renderDropdown(matches, totalFound, isPrompt) {
@@ -884,7 +899,7 @@ function renderDropdown(matches, totalFound, isPrompt) {
   dropdown.appendChild(headerItem);
 
   matches.forEach(name => {
-    const info = locationData[name];
+    const info = locationData[name] || {};
     const item = document.createElement('div');
     item.className = 'autocomplete-item';
     const autoVendorBadge = (info.vendor && info.model) 
@@ -893,7 +908,16 @@ function renderDropdown(matches, totalFound, isPrompt) {
     const autoIpBadge = info.ip ? '<span style="font-family:var(--mono); color:#4f46e5; margin-left:8px; font-weight:600; font-size:14px;">[' + info.ip + ']</span>' : '';
     const autoUpBadge = info.uplink_site ? '<span style="font-family:var(--mono); color:#047857; margin-left:6px; font-weight:600; font-size:13px;">(' + info.uplink_site + ')</span>' : '';
     item.innerHTML = '<span><strong>' + name + '</strong>' + autoVendorBadge + autoIpBadge + autoUpBadge + '</span> <span class="prov">' + (info.prov || '') + '</span>';
-    item.onclick = () => selectOlt(name);
+    
+    // Support pointerdown / mousedown for Edge & touch browsers
+    item.addEventListener('mousedown', function(e) {
+      e.preventDefault();
+      selectOlt(name);
+    });
+    item.addEventListener('click', function(e) {
+      e.preventDefault();
+      selectOlt(name);
+    });
     dropdown.appendChild(item);
   });
 }
@@ -932,6 +956,14 @@ function handleInput() {
   }
 }
 
+// Support keyup backup for Microsoft Edge & IME keyboards
+function handleKey(e) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    performSearch();
+  }
+}
+
 // Select item from dropdown
 function selectOlt(name) {
   document.getElementById('searchInput').value = name;
@@ -946,9 +978,10 @@ document.addEventListener('click', function(e) {
   }
 });
 
-// Allow triggering search by pressing Enter
-document.getElementById('searchInput').addEventListener('keypress', function(e) {
+// Robust Enter key listener supporting keydown (replacing deprecated keypress)
+document.getElementById('searchInput').addEventListener('keydown', function(e) {
   if (e.key === 'Enter') {
+    e.preventDefault();
     performSearch();
   }
 });
@@ -960,7 +993,7 @@ function performSearch() {
 
   const searchString = query.replace(/GO([0-9])/g, 'G0$1');
   
-  // Find all exact or normalized matches
+  // 1. Find all exact or normalized matches
   const exactNormalizedMatches = [];
   const allKeys = Object.keys(locationData);
   for (const name of allKeys) {
@@ -969,24 +1002,22 @@ function performSearch() {
     }
   }
 
-  // If exact or normalized matches found
   if (exactNormalizedMatches.length === 1) {
     document.getElementById('dropdown').style.display = 'none';
     showDetails(exactNormalizedMatches[0]);
     return;
   } else if (exactNormalizedMatches.length > 1) {
-    // Multiple exact/normalized variants (e.g. both G00 and GO0)
     renderDropdown(exactNormalizedMatches, exactNormalizedMatches.length, true);
     return;
   }
 
-  // If prefix search (e.g. user typed RYG06019 without G00/GO0)
-  const prefixMatches = getMatches(query);
-  if (prefixMatches.length === 1) {
+  // 2. Comprehensive Search (Prefix, Contains, Sitename, IP)
+  const matches = getMatches(query);
+  if (matches.length === 1) {
     document.getElementById('dropdown').style.display = 'none';
-    showDetails(prefixMatches[0]);
-  } else if (prefixMatches.length > 1) {
-    renderDropdown(prefixMatches.slice(0, 15), prefixMatches.length, true);
+    showDetails(matches[0]);
+  } else if (matches.length > 1) {
+    renderDropdown(matches.slice(0, 15), matches.length, true);
   } else {
     // Show not found
     document.getElementById('dropdown').style.display = 'none';
