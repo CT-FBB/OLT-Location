@@ -752,6 +752,10 @@ def main():
         uplink_site_val = ", ".join(cleaned_sites) if cleaned_sites else ""
 
         sfp_info = get_prop(display_name, sfp_map, {})
+        sfp_plugged_val = sfp_info.get('plugged', None)
+        if sfp_plugged_val is not None and sfp_plugged_val > ports:
+            ports = sfp_plugged_val
+            ports_avail = max(0, ports - ports_use)
         
         new_data[display_name] = {
             "reg": reg,
