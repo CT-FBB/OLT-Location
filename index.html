@@ -838,35 +838,14 @@ const locationData = {"NKW07002G00": {"reg": "NORTH", "prov": "NAKHON SAWAN", "d
 let matchedNames = [];
 
 // Handle keystrokes for Autocomplete suggestion (prefix match prioritized)
-function handleInput() {
-  const query = document.getElementById('searchInput').value.trim().toUpperCase();
-  const dropdown = document.getElementById('dropdown');
-  const emptyState = document.getElementById('emptyState');
-  const notFoundPanel = document.getElementById('notFoundPanel');
-  const resultsGrid = document.getElementById('resultsGrid');
-  
-  dropdown.innerHTML = '';
-  
-  if (!query) {
-    dropdown.style.display = 'none';
-    // Restore default state
-    emptyState.style.display = 'block';
-    notFoundPanel.style.display = 'none';
-    resultsGrid.style.display = 'none';
-    return;
-  }
-
-  // Dynamically hide default state boxes when user starts typing to avoid overlap
-  emptyState.style.display = 'none';
-  notFoundPanel.style.display = 'none';
-
-  // Normalize query and keys for GOx -> G0x
+function getMatches(query) {
+  if (!query) return [];
   const searchString = query.replace(/GO([0-9])/g, 'G0$1');
   const allKeys = Object.keys(locationData);
   const startsWithMatches = [];
   const containsMatches = [];
-  
   const ipMatches = [];
+  
   for (const name of allKeys) {
     const searchName = name.replace(/GO([0-9])/g, 'G0$1');
     const itemIp = (locationData[name] && locationData[name].ip) ? locationData[name].ip : '';
@@ -878,40 +857,76 @@ function handleInput() {
       ipMatches.push(name);
     }
   }
+  return startsWithMatches.concat(containsMatches).concat(ipMatches);
+}
+
+function renderDropdown(matches, totalFound, isPrompt) {
+  const dropdown = document.getElementById('dropdown');
+  dropdown.innerHTML = '';
+  if (matches.length === 0) {
+    dropdown.style.display = 'none';
+    return;
+  }
+
+  dropdown.style.display = 'block';
+
+  // Header item showing total matched
+  const headerItem = document.createElement('div');
+  headerItem.style.padding = '10px 18px';
+  headerItem.style.color = isPrompt ? '#b91c1c' : 'var(--muted)';
+  headerItem.style.fontSize = '14px';
+  headerItem.style.fontWeight = '600';
+  headerItem.style.borderBottom = '1px solid var(--border)';
+  headerItem.style.background = isPrompt ? '#fef2f2' : '#faf8f2';
+  headerItem.innerHTML = isPrompt 
+    ? '⚠️ พบ OLT ที่ตรงกัน ' + totalFound.toLocaleString() + ' เครื่อง (กรุณาคลิกเลือกเครื่องที่ต้องการ)' 
+    : 'พบ OLT ที่ตรงกัน ' + totalFound.toLocaleString() + ' เครื่อง (แสดงสูงสุด 15)';
+  dropdown.appendChild(headerItem);
+
+  matches.forEach(name => {
+    const info = locationData[name];
+    const item = document.createElement('div');
+    item.className = 'autocomplete-item';
+    const autoVendorBadge = (info.vendor && info.model) 
+      ? '<span style="background:#e0e7ff; color:#3730a3; padding:2px 8px; border-radius:6px; font-size:12px; font-weight:700; margin-left:8px;">' + info.vendor + ' - ' + info.model + '</span>' 
+      : '';
+    const autoIpBadge = info.ip ? '<span style="font-family:var(--mono); color:#4f46e5; margin-left:8px; font-weight:600; font-size:14px;">[' + info.ip + ']</span>' : '';
+    const autoUpBadge = info.uplink_site ? '<span style="font-family:var(--mono); color:#047857; margin-left:6px; font-weight:600; font-size:13px;">(' + info.uplink_site + ')</span>' : '';
+    item.innerHTML = '<span><strong>' + name + '</strong>' + autoVendorBadge + autoIpBadge + autoUpBadge + '</span> <span class="prov">' + (info.prov || '') + '</span>';
+    item.onclick = () => selectOlt(name);
+    dropdown.appendChild(item);
+  });
+}
+
+function handleInput() {
+  const query = document.getElementById('searchInput').value.trim().toUpperCase();
+  const dropdown = document.getElementById('dropdown');
+  const emptyState = document.getElementById('emptyState');
+  const notFoundPanel = document.getElementById('notFoundPanel');
+  const resultsGrid = document.getElementById('resultsGrid');
   
-  const combinedMatches = startsWithMatches.concat(containsMatches).concat(ipMatches);
+  dropdown.innerHTML = '';
+  
+  if (!query) {
+    dropdown.style.display = 'none';
+    emptyState.style.display = 'block';
+    notFoundPanel.style.display = 'none';
+    resultsGrid.style.display = 'none';
+    return;
+  }
+
+  emptyState.style.display = 'none';
+  notFoundPanel.style.display = 'none';
+
+  const combinedMatches = getMatches(query);
   const totalFound = combinedMatches.length;
-  const slicedMatches = combinedMatches.slice(0, 15); // Show top 15 suggestions
+  const slicedMatches = combinedMatches.slice(0, 15);
 
   if (totalFound > 0) {
-    dropdown.style.display = 'block';
-    
-    // Header item showing total matched
-    const headerItem = document.createElement('div');
-    headerItem.style.padding = '8px 18px';
-    headerItem.style.fontSize = '10px';
-    headerItem.style.color = 'var(--muted)';
-    headerItem.style.fontSize = '14px';
-    headerItem.style.borderBottom = '1px solid var(--border)';
-    headerItem.style.background = '#faf8f2';
-    headerItem.textContent = `พบ OLT ที่ตรงกัน ${totalFound.toLocaleString()} เครื่อง (แสดงสูงสุด 15)`;
-    dropdown.appendChild(headerItem);
-
-    slicedMatches.forEach(name => {
-      const info = locationData[name];
-      const item = document.createElement('div');
-      item.className = 'autocomplete-item';
-      const autoIpBadge = info.ip ? `<span style="font-family:var(--mono); color:#4f46e5; margin-left:8px; font-weight:600; font-size:14px;">[${info.ip}]</span>` : '';
-      const autoUpBadge = info.uplink_site ? `<span style="font-family:var(--mono); color:#047857; margin-left:6px; font-weight:600; font-size:13px;">(${info.uplink_site})</span>` : '';
-      item.innerHTML = `<span>${name}${autoIpBadge}${autoUpBadge}</span> <span class="prov">${info.prov || ''}</span>`;
-      item.onclick = () => selectOlt(name);
-      dropdown.appendChild(item);
-    });
+    renderDropdown(slicedMatches, totalFound, false);
   } else {
     dropdown.style.display = 'none';
     resultsGrid.style.display = 'none';
-    
-    // Show not found immediately
     document.getElementById('searchQueryName').textContent = query;
     notFoundPanel.style.display = 'block';
   }
@@ -926,7 +941,7 @@ function selectOlt(name) {
 
 // Close suggestion list when clicking outside
 document.addEventListener('click', function(e) {
-  if (e.target.id !== 'searchInput') {
+  if (e.target.id !== 'searchInput' && !e.target.closest('#dropdown')) {
     document.getElementById('dropdown').style.display = 'none';
   }
 });
@@ -941,35 +956,47 @@ document.getElementById('searchInput').addEventListener('keypress', function(e) 
 // Perform main Search action
 function performSearch() {
   const query = document.getElementById('searchInput').value.trim().toUpperCase();
-  document.getElementById('dropdown').style.display = 'none';
-  
   if (!query) return;
 
   const searchString = query.replace(/GO([0-9])/g, 'G0$1');
-  let matchedName = null;
-  if (locationData[query]) {
-    matchedName = query;
-  } else {
-    const allKeys = Object.keys(locationData);
-    for (const name of allKeys) {
-      if (name.replace(/GO([0-9])/g, 'G0$1') === searchString) {
-        matchedName = name;
-        break;
-      }
+  
+  // Find all exact or normalized matches
+  const exactNormalizedMatches = [];
+  const allKeys = Object.keys(locationData);
+  for (const name of allKeys) {
+    if (name === query || name.replace(/GO([0-9])/g, 'G0$1') === searchString) {
+      exactNormalizedMatches.push(name);
     }
   }
-  
-  if (matchedName && locationData[matchedName]) {
-    showDetails(matchedName);
+
+  // If exact or normalized matches found
+  if (exactNormalizedMatches.length === 1) {
+    document.getElementById('dropdown').style.display = 'none';
+    showDetails(exactNormalizedMatches[0]);
+    return;
+  } else if (exactNormalizedMatches.length > 1) {
+    // Multiple exact/normalized variants (e.g. both G00 and GO0)
+    renderDropdown(exactNormalizedMatches, exactNormalizedMatches.length, true);
+    return;
+  }
+
+  // If prefix search (e.g. user typed RYG06019 without G00/GO0)
+  const prefixMatches = getMatches(query);
+  if (prefixMatches.length === 1) {
+    document.getElementById('dropdown').style.display = 'none';
+    showDetails(prefixMatches[0]);
+  } else if (prefixMatches.length > 1) {
+    renderDropdown(prefixMatches.slice(0, 15), prefixMatches.length, true);
   } else {
     // Show not found
+    document.getElementById('dropdown').style.display = 'none';
     document.getElementById('emptyState').style.display = 'none';
     document.getElementById('resultsGrid').style.display = 'none';
-    
     document.getElementById('searchQueryName').textContent = query;
     document.getElementById('notFoundPanel').style.display = 'block';
   }
 }
+
 
 let currentSelectedOlt = '';
 
